@@ -1,5 +1,5 @@
 ﻿/*    
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/SuperNova)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -16,11 +16,12 @@
     permissions and limitations under the Licenses.
 */
 using System;
+using System.IO;
 using System.Threading;
 using System.Windows.Forms;
-using MCGalaxy.UI;
+using SuperNova.UI;
 
-namespace MCGalaxy.Gui {
+namespace SuperNova.Gui {
     public partial class Window : Form {
         
         void map_BtnGen_Click(object sender, EventArgs e) {

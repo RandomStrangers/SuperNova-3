@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/SuperNova)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -18,7 +18,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace MCGalaxy.Gui
+namespace SuperNova.Gui
 {
     public partial class Window
     {
@@ -99,7 +99,7 @@ namespace MCGalaxy.Gui
             this.main_colLvlPlayers = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.main_colLvlPhysics = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.main_Maps = new System.Windows.Forms.DataGridView();
-            this.main_txtLog = new MCGalaxy.Gui.Components.ColoredTextBox();
+            this.main_txtLog = new SuperNova.Gui.Components.ColoredTextBox();
             this.tsLog_Menu = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.tsLog_night = new System.Windows.Forms.ToolStripMenuItem();
             this.tsLog_Colored = new System.Windows.Forms.ToolStripMenuItem();
@@ -119,7 +119,7 @@ namespace MCGalaxy.Gui
             this.tabs = new System.Windows.Forms.TabControl();
             this.tp_Maps = new System.Windows.Forms.TabPage();
             this.map_gbProps = new System.Windows.Forms.GroupBox();
-            this.map_pgProps = new MCGalaxy.Gui.HackyPropertyGrid();
+            this.map_pgProps = new SuperNova.Gui.HackyPropertyGrid();
             this.map_gbLoaded = new System.Windows.Forms.GroupBox();
             this.map_lbLoaded = new System.Windows.Forms.ListBox();
             this.map_gbUnloaded = new System.Windows.Forms.GroupBox();
@@ -141,7 +141,7 @@ namespace MCGalaxy.Gui
             this.map_txtName = new System.Windows.Forms.TextBox();
             this.tp_Players = new System.Windows.Forms.TabPage();
             this.pl_gbProps = new System.Windows.Forms.GroupBox();
-            this.pl_pgProps = new MCGalaxy.Gui.HackyPropertyGrid();
+            this.pl_pgProps = new SuperNova.Gui.HackyPropertyGrid();
             this.pl_gbOther = new System.Windows.Forms.GroupBox();
             this.pl_txtSendCommand = new System.Windows.Forms.TextBox();
             this.pl_btnSendCommand = new System.Windows.Forms.Button();
@@ -149,7 +149,7 @@ namespace MCGalaxy.Gui
             this.pl_btnMessage = new System.Windows.Forms.Button();
             this.pl_gbActions = new System.Windows.Forms.GroupBox();
             this.pl_btnKill = new System.Windows.Forms.Button();
-            this.pl_numUndo = new MCGalaxy.Gui.TimespanUpDown();
+            this.pl_txtUndo = new System.Windows.Forms.TextBox();
             this.pl_btnWarn = new System.Windows.Forms.Button();
             this.pl_btnRules = new System.Windows.Forms.Button();
             this.pl_btnKick = new System.Windows.Forms.Button();
@@ -764,7 +764,7 @@ namespace MCGalaxy.Gui
             this.main_txtUrl.ReadOnly = true;
             this.main_txtUrl.Size = new System.Drawing.Size(498, 21);
             this.main_txtUrl.TabIndex = 25;
-            this.main_txtUrl.Text = "Starting server..";
+            this.main_txtUrl.Text = "Finding classicube.net url..";
             this.main_txtUrl.DoubleClick += new System.EventHandler(this.main_TxtUrl_DoubleClick);
             // 
             // main_colPlName
@@ -1166,7 +1166,7 @@ namespace MCGalaxy.Gui
             // pl_gbActions
             // 
             this.pl_gbActions.Controls.Add(this.pl_btnKill);
-            this.pl_gbActions.Controls.Add(this.pl_numUndo);
+            this.pl_gbActions.Controls.Add(this.pl_txtUndo);
             this.pl_gbActions.Controls.Add(this.pl_btnWarn);
             this.pl_gbActions.Controls.Add(this.pl_btnRules);
             this.pl_gbActions.Controls.Add(this.pl_btnKick);
@@ -1192,17 +1192,14 @@ namespace MCGalaxy.Gui
             this.pl_btnKill.UseVisualStyleBackColor = true;
             this.pl_btnKill.Click += new System.EventHandler(this.pl_BtnKill_Click);
             // 
-            // pl_numUndo
+            // pl_txtUndo
             // 
-            this.pl_numUndo.BackColor = System.Drawing.SystemColors.Window;
-            this.pl_numUndo.Location = new System.Drawing.Point(122, 149);
-            this.pl_numUndo.Name = "pl_numUndo";
-            this.pl_numUndo.Size = new System.Drawing.Size(98, 21);
-            this.pl_numUndo.TabIndex = 42;
-            this.pl_numUndo.Seconds = ((long)(1800));
-            this.pl_numUndo.Text = "30m";
-            this.pl_numUndo.Value = System.TimeSpan.Parse("00:30:00");
-            this.pl_numUndo.KeyDown += new System.Windows.Forms.KeyEventHandler(this.pl_numUndo_KeyDown);
+            this.pl_txtUndo.BackColor = System.Drawing.SystemColors.Window;
+            this.pl_txtUndo.Location = new System.Drawing.Point(122, 150);
+            this.pl_txtUndo.Name = "pl_txtUndo";
+            this.pl_txtUndo.Size = new System.Drawing.Size(98, 21);
+            this.pl_txtUndo.TabIndex = 42;
+            this.pl_txtUndo.KeyDown += new System.Windows.Forms.KeyEventHandler(this.pl_txtUndo_KeyDown);
             // 
             // pl_btnWarn
             // 
@@ -1432,7 +1429,7 @@ namespace MCGalaxy.Gui
         private ToolStripMenuItem tsPlayer_promote;
         private ToolStripMenuItem tsPlayer_demote;
         private TabPage tp_Players;
-        private RichTextBox logs_txtGeneral;
+        internal RichTextBox logs_txtGeneral;
         private DateTimePicker logs_dateGeneral;
         private Button pl_btnBanIP;
         private Button pl_btnBan;
@@ -1444,7 +1441,7 @@ namespace MCGalaxy.Gui
         private TextBox pl_txtSendCommand;
         private Button pl_btnSendCommand;
         private Button pl_btnKill;
-        private MCGalaxy.Gui.TimespanUpDown pl_numUndo;
+        private TextBox pl_txtUndo;
         private Button pl_btnUndo;
         private Button pl_btnMute;
         private Button pl_btnRules;

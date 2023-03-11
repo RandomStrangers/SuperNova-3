@@ -1,5 +1,5 @@
 ﻿/*    
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/SuperNova)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -19,9 +19,9 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using MCGalaxy.UI;
+using SuperNova.UI;
 
-namespace MCGalaxy.Gui {
+namespace SuperNova.Gui {
     public partial class Window : Form {
         
         Player GetSelectedPlayer() {
@@ -109,22 +109,15 @@ namespace MCGalaxy.Gui {
             main_txtInput.SelectionLength = 0;
             main_txtInput.SelectionStart = main_txtInput.Text.Length;
         }
-
-        void AddInputLog(string text) {
-            // Simplify navigating through input history by not logging duplicate entries
-            if (inputLog.Count > 0 && text == inputLog[0]) return;
-
-            inputLog.Insert(0, text);
-            if (inputLog.Count > 20)
-                inputLog.RemoveAt(20);
-        }
         
         void InputText() {
             string text = main_txtInput.Text;
             if (text.Length == 0) return;
-            AddInputLog(text);
-
-
+            
+            inputLog.Insert(0, text);
+            if (inputLog.Count > 20) 
+                inputLog.RemoveAt(20);
+            
             if (text == "/") {
                 UIHelpers.RepeatCommand();
             } else if (text[0] == '/' && text.Length > 1 && text[1] == '/') {
