@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2015 MCGalaxy
+    Copyright 2015 SuperNova
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -19,61 +19,45 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace MCGalaxy.Gui
+namespace SuperNova.Gui 
 {
-    public class GuiRank
-    {
-        public string Name;
-        public LevelPermission Permission;
-        public GuiRank(string name, LevelPermission perm) { Name = name; Permission = perm; }
-
-        public override string ToString() { return Name; }
-    }
-
     internal static class GuiPerms 
     {
-        static List<GuiRank> Ranks, RanksRemove;
+        internal static string[] RankNames;
+        internal static LevelPermission[] RankPerms;
         
-        internal static void UpdateRanks() {
-            Ranks = new List<GuiRank>(Group.AllRanks.Count);
+        internal static void UpdateRankNames() {
+            List<string> names = new List<string>(Group.GroupList.Count);
+            List<LevelPermission> perms = new List<LevelPermission>(Group.GroupList.Count);
             
-            foreach (Group group in Group.AllRanks) 
-            {
-                Ranks.Add(new GuiRank(group.Name, group.Permission));
+            foreach (Group group in Group.GroupList) {
+                names.Add(group.Name);
+                perms.Add(group.Permission);
             }
-
-            RanksRemove = new List<GuiRank>(Ranks);
-            RanksRemove.Add(new GuiRank("(remove rank)", LevelPermission.Null));
+            RankNames = names.ToArray();
+            RankPerms = perms.ToArray();
         }
         
-        internal static LevelPermission GetSelectedRank(ComboBox box, LevelPermission defPerm) {
-            GuiRank rank = (GuiRank)box.SelectedItem;
-            return rank == null ? defPerm : rank.Permission;
+        internal static LevelPermission GetPermission(ComboBox box, LevelPermission defPerm) {
+            Group grp = Group.Find(box.SelectedItem.ToString());
+            return grp == null ? defPerm : grp.Permission;
         }
         
-        internal static void SetSelectedRank(ComboBox box, LevelPermission perm) {
-            List<GuiRank> ranks = (List<GuiRank>)box.DataSource;
-            GuiRank rank = ranks.Find(r => r.Permission == perm);
-
-            if (rank == null) {
+        internal static void SetDefaultIndex(ComboBox box, LevelPermission perm) {
+            Group grp = Group.Find(perm);
+            if (grp == null) {
                 box.SelectedIndex = 1;
             } else {
-                box.SelectedItem  = rank;
+                int idx = Array.IndexOf<string>(RankNames, grp.Name);
+                box.SelectedIndex = idx >= 0 ? idx : 1;
             }
         }
-
-        internal static void SetRanks(ComboBox box, bool removeRank = false) {
-            List<GuiRank> ranks = removeRank ? RanksRemove : Ranks;
-            box.DisplayMember = "Name";
-            box.ValueMember   = "Permission";
-            // run into issues otherwise if multiple combo boxes share same source
-            box.DataSource    = new List<GuiRank>(ranks);
-        }
         
-        internal static void SetRanks(ComboBox[] boxes, bool removeRank = false) {
-            foreach (ComboBox box in boxes)
-            {
-                SetRanks(box, removeRank);
+        internal static void FillRanks(ComboBox[] boxes, bool removeRank = true) {
+            for (int i = 0; i < boxes.Length; i++) {
+                boxes[i].Items.AddRange(RankNames);
+                if (!removeRank) continue;
+                boxes[i].Items.Add("(remove rank)");
             }
         }
     }
