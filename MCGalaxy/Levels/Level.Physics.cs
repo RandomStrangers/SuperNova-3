@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,6 +20,7 @@ using System.Threading;
 using MCGalaxy.Blocks;
 using MCGalaxy.Blocks.Physics;
 using MCGalaxy.Events.LevelEvents;
+using MCGalaxy.Games;
 using MCGalaxy.Network;
 using BlockID = System.UInt16;
 
@@ -37,11 +38,9 @@ namespace MCGalaxy {
         	
             if (physics == 0 && level != 0 && blocks != null) {
                 for (int i = 0; i < blocks.Length; i++)
-                {
                     // Optimization hack, since no blocks under 183 ever need a restart
                     if (blocks[i] > 183 && Block.NeedRestart(blocks[i]))
                         AddCheck(i);
-                }
             }
             
             if (physics != level) OnPhysicsLevelChangedEvent.Call(this, level);
@@ -183,7 +182,6 @@ namespace MCGalaxy {
                     ListCheck.RemoveAt(i);
                 }
             }
-            // TODO: Inline this into the prior for loop, and remove PhysicsArgs.RemoveFromChecks
             RemoveExpiredChecks();
             
             lastUpdate = ListUpdate.Count;
@@ -214,13 +212,10 @@ namespace MCGalaxy {
             ListUpdate.Clear(); listUpdateExists.Clear();
         }
         
-        
-        /// <summary> Adds the given coordinates to the list of ticked coordinates with empty data </summary>
         public void AddCheck(int index, bool overRide = false) {
             AddCheck(index, overRide, default(PhysicsArgs));
         }
         
-        /// <summary> Adds the given coordinates to the list of ticked coordinates with the given data </summary>
         public void AddCheck(int index, bool overRide, PhysicsArgs data) {
             try {
                 int x = index % Width;
@@ -249,17 +244,13 @@ namespace MCGalaxy {
             }
         }
 
-        /// <summary> Adds the given entry to the list of updates to be applied at the end of the current physics tick </summary>
-        /// <remarks> Must only be called from the physics thread (i.e. in a HandlePhysics handler function) </remarks>
-        public bool AddUpdate(int index, BlockID block, bool overRide = false) {
+        internal bool AddUpdate(int index, BlockID block, bool overRide = false) {
             PhysicsArgs args = default(PhysicsArgs);
             args.Raw |= (uint)(PhysicsArgs.ExtBit * (block >> Block.ExtendedShift));
             return AddUpdate(index, block, args, overRide);
         }
         
-        /// <summary> Adds the given entry to the list of updates to be applied at the end of the current physics tick </summary>
-        /// <remarks> Must only be called from the physics thread (i.e. in a HandlePhysics handler function) </remarks>
-        public bool AddUpdate(int index, BlockID block, PhysicsArgs data, bool overRide = false) {
+        internal bool AddUpdate(int index, BlockID block, PhysicsArgs data, bool overRide = false) {
             try {
                 int x = index % Width;
                 int y = (index / Width) / Length;
@@ -333,10 +324,8 @@ namespace MCGalaxy {
         }
         
         public void ClearPhysics() {
-            for (int i = 0; i < ListCheck.Count; i++)
-            {
+            for (int i = 0; i < ListCheck.Count; i++ )
                 RevertPhysics(ListCheck.Items[i]);
-            }
             ClearPhysicsLists();
         }
         
@@ -408,27 +397,19 @@ namespace MCGalaxy {
         }
     }
     
-    /// <summary> Represents a physics tick entry </summary>
-    public struct PhysInfo 
-    {
-        /// <summary> X/Y/Z coordinates of this tick entry </summary>
+    public struct PhysInfo {
         public ushort X, Y, Z;
-        /// <summary> Block ID that is located at the coordinates of this tick entry </summary>
         public BlockID Block;
-        /// <summary> Packed coordinates of this tick entry </summary>
         public int Index;
-        /// <summary> Data/State of this tick entry </summary>
         public PhysicsArgs Data;
     }
     
-    internal struct Check 
-    {
+    public struct Check {
         public int Index;
         public PhysicsArgs data;
     }
 
-    internal struct Update 
-    {
+    public struct Update {
         public int Index;
         public PhysicsArgs data;
     }

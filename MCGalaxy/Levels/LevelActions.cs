@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MCGalaxy.Blocks;
 using MCGalaxy.Blocks.Extended;
 using MCGalaxy.Bots;
 using MCGalaxy.DB;
@@ -26,10 +27,10 @@ using MCGalaxy.Levels.IO;
 using MCGalaxy.SQL;
 using MCGalaxy.Util;
 
-namespace MCGalaxy 
-{    
-    public static class LevelActions 
-    {       
+namespace MCGalaxy {
+    
+    public static class LevelActions {
+        
         static string BlockPropsLvlPath(string map) { return Paths.BlockPropsPath("_" + map); }
         static string BlockPropsOldPath(string map) { return Paths.BlockPropsPath("lvl_" + map); }
         
@@ -175,19 +176,24 @@ namespace MCGalaxy
         }
         
         static void DeleteDatabaseTables(string map) {
-            Database.DeleteTable("Block" + map);
+            if (Database.TableExists("Block" + map)) {
+                Database.DeleteTable("Block" + map);
+            }
             
             object locker = ThreadSafeCache.DBCache.GetLocker(map);
             lock (locker) {
                 Portal.DeleteAll(map);
                 MessageBlock.DeleteAll(map);
-                Database.DeleteTable("Zone" + map);
+                
+                if (Database.TableExists("Zone" + map)) {
+                    Database.DeleteTable("Zone" + map);
+                }
             }
         }
         
         
         public static void Replace(Level old, Level lvl) {
-            old.SaveBlockDBChanges();
+            LevelDB.SaveBlockDB(old);
             LevelInfo.Remove(old);
             LevelInfo.Add(lvl);
             
@@ -368,7 +374,7 @@ namespace MCGalaxy
             lvl.IsMuseum = true;
             
             Level.LoadMetadata(lvl);
-            lvl.BuildAccess.Min = LevelPermission.Console;
+            lvl.BuildAccess.Min = LevelPermission.Nobody;
             lvl.Config.Physics = 0;
             return lvl;
         }
@@ -393,7 +399,7 @@ namespace MCGalaxy
                 return clone;
             }
             
-            return IMapImporter.Decode(path, name, false);
+            return IMapImporter.Read(path, name, false);
         }
         
         

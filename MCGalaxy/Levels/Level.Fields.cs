@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -21,6 +21,8 @@ using System.Threading;
 using MCGalaxy.Blocks;
 using MCGalaxy.Blocks.Physics;
 using MCGalaxy.DB;
+using MCGalaxy.Config;
+using MCGalaxy.Games;
 using MCGalaxy.Maths;
 using MCGalaxy.Network;
 using MCGalaxy.Util;
@@ -37,6 +39,7 @@ namespace MCGalaxy {
         /// </summary>
         public string name;
 
+        public string Color { get { return Config.Color; } }
         public string ColoredName { get { return Config.Color + name; } }
         public LevelConfig Config = new LevelConfig();
         
@@ -44,25 +47,20 @@ namespace MCGalaxy {
         public ushort spawnx, spawny, spawnz;
         public Position SpawnPos { get { return new Position(16 + spawnx * 32, 32 + spawny * 32, 16 + spawnz * 32); } }
             
-        public BlockDefinition[] CustomBlockDefs = new BlockDefinition[Block.SUPPORTED_COUNT];
-        public BlockProps[] Props = new BlockProps[Block.SUPPORTED_COUNT];
+        public BlockDefinition[] CustomBlockDefs = new BlockDefinition[Block.ExtendedCount];
+        public BlockProps[] Props = new BlockProps[Block.ExtendedCount];
         public ExtrasCollection Extras = new ExtrasCollection();
         public VolatileArray<PlayerBot> Bots = new VolatileArray<PlayerBot>(false);
         bool unloadedBots;
         
-        public HandleDelete[] DeleteHandlers = new HandleDelete[Block.SUPPORTED_COUNT];
-        public HandlePlace[] PlaceHandlers = new HandlePlace[Block.SUPPORTED_COUNT];
-        public HandleWalkthrough[] WalkthroughHandlers = new HandleWalkthrough[Block.SUPPORTED_COUNT];
-        public HandlePhysics[] PhysicsHandlers = new HandlePhysics[Block.SUPPORTED_COUNT];
-        internal HandlePhysics[] physicsDoorsHandlers = new HandlePhysics[Block.SUPPORTED_COUNT];
-        internal AABB[] blockAABBs = new AABB[Block.SUPPORTED_COUNT];
+        public HandleDelete[] DeleteHandlers = new HandleDelete[Block.ExtendedCount];
+        public HandlePlace[] PlaceHandlers = new HandlePlace[Block.ExtendedCount];
+        public HandleWalkthrough[] WalkthroughHandlers = new HandleWalkthrough[Block.ExtendedCount];
+        public HandlePhysics[] PhysicsHandlers = new HandlePhysics[Block.ExtendedCount];
+        internal HandlePhysics[] physicsDoorsHandlers = new HandlePhysics[Block.ExtendedCount];
+        internal AABB[] blockAABBs = new AABB[Block.ExtendedCount];
         
-        /// <summary> The width of this level (Number of blocks across in X dimension) </summary>
-        public ushort Width;
-        /// <summary> The height of this level (Number of blocks tall in Y dimension) </summary>
-        public ushort Height;
-        /// <summary> The length of this level (Number of blocks across in Z dimension) </summary>
-        public ushort Length;
+        public ushort Width, Height, Length;
         /// <summary> Whether this level should be treated as a readonly museum </summary>
         public bool IsMuseum;
 
@@ -110,7 +108,6 @@ namespace MCGalaxy {
         readonly object physThreadLock = new object();
         internal readonly object physTickLock = new object();
         bool physThreadStarted = false;
-        internal DateTime lastBackup;
         
         public List<C4Data> C4list = new List<C4Data>();
 

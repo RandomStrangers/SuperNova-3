@@ -93,7 +93,7 @@ namespace MCGalaxy {
         
         public void Describe(Player p, StringBuilder perms) {
             perms.Append(Group.GetColoredName(Min) + "&S+");
-            if (Max < LevelPermission.Owner) {
+            if (Max != LevelPermission.Nobody) {
                 perms.Append(" up to " + Group.GetColoredName(Max));
             }
             
@@ -272,14 +272,13 @@ namespace MCGalaxy {
             if (isVisit && lvl == Server.mainLevel) return;
             Player[] players = PlayerInfo.Online.Items;
             
-            foreach (Player p in players) 
-            {
+            foreach (Player p in players) {
                 if (p.level != lvl) continue;
                 bool allowed = CheckAllowed(p);
                 
                 if (!isVisit) {
                     p.AllowBuild = allowed;
-                } else if (!allowed) {
+                } else if (!allowed) {                    
                     p.Message("&WNo longer allowed to visit &S{0}", ColoredName);
                     PlayerActions.ChangeMap(p, Server.mainLevel);
                 }

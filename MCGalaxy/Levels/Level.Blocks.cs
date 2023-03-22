@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -16,9 +16,11 @@
     permissions and limitations under the Licenses.
  */
 using System;
+using System.Collections.Generic;
 using MCGalaxy.Blocks;
 using MCGalaxy.Blocks.Physics;
 using MCGalaxy.DB;
+using MCGalaxy.Games;
 using MCGalaxy.Maths;
 using BlockID = System.UInt16;
 using BlockRaw = System.Byte;
@@ -174,6 +176,12 @@ namespace MCGalaxy {
             int cx = x >> 4, cy = y >> 4, cz = z >> 4;
             byte[] chunk = CustomBlocks[(cy * ChunksZ + cz) * ChunksX + cx];
             return chunk == null ? Block.Air : chunk[(y & 0x0F) << 8 | (z & 0x0F) << 4 | (x & 0x0F)];
+        }
+        
+        public void SetTile(int index, byte block) {
+            if (blocks == null || index < 0 || index >= blocks.Length) return;
+            blocks[index] = block;
+            Changed = true;
         }
         
         public void SetTile(ushort x, ushort y, ushort z, byte block) {
@@ -452,7 +460,7 @@ namespace MCGalaxy {
             if (result == ChangeResult.VisuallySame) return;
             
             if (buffered) {
-                p.level.blockqueue.Add(index, block);
+                p.level.blockqueue.Add(p, index, block);
             } else {
                 BroadcastChange(x, y, z, block);
             }

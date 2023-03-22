@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using MCGalaxy.Config;
 using MCGalaxy.Games;
-using MCGalaxy.Modules.Games.ZS;
 using BlockID = System.UInt16;
 
 namespace MCGalaxy 
@@ -187,7 +186,7 @@ namespace MCGalaxy
         }
         
         /// <summary> Calculates the default value for the given env property </summary>
-        public static int DefaultEnvProp(EnvProp i, int height) {
+        public int DefaultEnvProp(EnvProp i, int height) {
             if (i == EnvProp.SidesBlock)     return Block.Bedrock;
             if (i == EnvProp.EdgeBlock)      return Block.Water;
             if (i == EnvProp.EdgeLevel)      return height / 2;
@@ -215,8 +214,8 @@ namespace MCGalaxy
 
         [ConfigPerm("PerBuild", "Permissions", LevelPermission.Guest)]
         public LevelPermission BuildMin = LevelPermission.Guest;
-        [ConfigPerm("PerBuildMax", "Permissions", LevelPermission.Owner)]
-        public LevelPermission BuildMax = LevelPermission.Owner;
+        [ConfigPerm("PerBuildMax", "Permissions", LevelPermission.Console)]
+        public LevelPermission BuildMax = LevelPermission.Console;
         
         // Other blacklists/whitelists
         [ConfigStringList("BuildWhitelist", "Permissions")]
@@ -254,8 +253,8 @@ namespace MCGalaxy
         public string RealmOwner = "";
         [ConfigPerm("PerVisit", "Permissions", LevelPermission.Guest)]
         public LevelPermission VisitMin = LevelPermission.Guest;
-        [ConfigPerm("PerVisitMax", "Permissions", LevelPermission.Owner)]
-        public LevelPermission VisitMax = LevelPermission.Owner;
+        [ConfigPerm("PerVisitMax", "Permissions", LevelPermission.Console)]
+        public LevelPermission VisitMax = LevelPermission.Console;
         
         // Other blacklists/whitelists
         [ConfigStringList("VisitWhitelist", "Permissions")]
@@ -307,7 +306,7 @@ namespace MCGalaxy
         [ConfigString("Authors", "Game", "", true)]
         public string Authors = "";
         [ConfigBool("Pillaring", "Game", false)]
-        public bool Pillaring = !ZSGame.Instance.Config.NoPillaring;
+        public bool Pillaring = !ZSGame.Config.NoPillaring;
         
         [ConfigEnum("BuildType", "Game", BuildType.Normal, typeof(BuildType))]
         public BuildType BuildType = BuildType.Normal;

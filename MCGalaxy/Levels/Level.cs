@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -19,11 +19,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
 using MCGalaxy.Blocks;
 using MCGalaxy.Bots;
+using MCGalaxy.Commands;
 using MCGalaxy.DB;
 using MCGalaxy.Events.LevelEvents;
+using MCGalaxy.Events.PlayerEvents;
+using MCGalaxy.Games;
+using MCGalaxy.Generator;
 using MCGalaxy.Levels.IO;
 using MCGalaxy.Util;
 using BlockID = System.UInt16;
@@ -33,10 +36,9 @@ namespace MCGalaxy
 {
     public enum LevelPermission
     {
-        Banned  = -20, Guest =   0, Builder = 30, AdvBuilder =  50, 
-        Operator = 80, Admin = 100, Owner  = 120, Console    = 127,
-
-        Null = 150, Nobody = 120 // backwards compatibility
+        Banned = -20, Guest = 0, Builder = 30,
+        AdvBuilder = 50, Operator = 80,
+        Admin = 100, Nobody = 120, Null = 150
     }
     
     public enum BuildType { Normal, ModifyOnly, NoModify };
@@ -96,12 +98,12 @@ namespace MCGalaxy
             ClearPhysicsLists();
             UndoBuffer.Clear();
             BlockDB.Cache.Clear();
+            Zones.Clear();
+            
             blockqueue.ClearAll();
-
             lock (saveLock) {
-                blocks       = null;
+                blocks = null;
                 CustomBlocks = null;
-                Zones.Clear();
             }
         }
         
@@ -114,7 +116,7 @@ namespace MCGalaxy
         }
         
         public bool CanJoin(Player p) {
-            if (p.IsConsole || this == Server.mainLevel) return true;
+            if (p.IsConsole) return true;
             
             bool skip = p.summonedMap != null && p.summonedMap.CaselessEq(name);
             LevelPermission plRank = skip ? LevelPermission.Console : p.Rank;
@@ -128,14 +130,11 @@ namespace MCGalaxy
         
         void Cleanup() {
             Physicsint = 0;
-            Thread t;
-
             try {
-                t = physThread;
                 // Wake up physics thread from Thread.Sleep
-                if (t != null) t.Interrupt();
+                physThread.Interrupt();
                 // Wait up to 1 second for physics thread to finish
-                if (t != null) t.Join(1000);
+                physThread.Join(1000);
             } catch {
                 // No physics thread at all
             }
@@ -158,7 +157,7 @@ namespace MCGalaxy
             bool cancel = false;
             OnLevelUnloadEvent.Call(this, ref cancel);
             if (cancel) {
-                Logger.Log(LogType.SystemActivity, "Unloading of {0} canceled by a plugin", name);
+                Logger.Log(LogType.SystemActivity, "Unload canceled by Plugin! (Map: {0})", name);
                 return false;
             }
             MovePlayersToMain();
@@ -258,7 +257,10 @@ namespace MCGalaxy
         /// <returns> The name of the backup, or null if no backup was saved. </returns>
         public string Backup(bool force = false, string backup = "") {
             if (ChangedSinceBackup || force) {
-                if (backup.Length == 0) backup = LevelInfo.NextBackup(name);
+                string backupPath = LevelInfo.BackupBasePath(name);
+                if (!Directory.Exists(backupPath)) Directory.CreateDirectory(backupPath);
+                int next = LevelInfo.LatestBackup(name) + 1;
+                if (backup.Length == 0) backup = next.ToString();
 
                 if (!LevelActions.Backup(name, backup)) {
                     Logger.Log(LogType.Warning, "FAILED TO INCREMENTAL BACKUP :" + name);
@@ -283,7 +285,7 @@ namespace MCGalaxy
             }
             
             try {
-                Level lvl = IMapImporter.Decode(path, name, true);
+                Level lvl = IMapImporter.Read(path, name, true);
                 LoadMetadata(lvl);
                 BotsFile.Load(lvl);
 
@@ -405,8 +407,7 @@ namespace MCGalaxy
         }
         
         public void UpdateAllBlockHandlers() {
-            for (int i = 0; i < Props.Length; i++) 
-            {
+            for (int i = 0; i < Props.Length; i++) {
                 UpdateBlockHandlers((BlockID)i);
             }
         }
@@ -425,12 +426,6 @@ namespace MCGalaxy
             CustomBlockDefs[block] = def;
             UpdateBlockHandlers(block);
             blockAABBs[block] = Block.BlockAABB(block, this);
-        }
-        
-        public int GetEdgeLevel() {
-            int edgeLevel = Config.EdgeLevel;
-            if (edgeLevel == EnvConfig.ENV_USE_DEFAULT) edgeLevel = Height / 2;//EnvConfig.DefaultEnvProp(EnvProp.EdgeLevel, Height);
-            return edgeLevel;
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -17,16 +17,17 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Data;
 using MCGalaxy.Blocks.Extended;
 using MCGalaxy.Maths;
 using MCGalaxy.SQL;
+using MCGalaxy.Util;
 using BlockID = System.UInt16;
 
-namespace MCGalaxy 
-{
-    public static class LevelDB 
-    {
-        internal static void SaveBlockDB(Level lvl) {
+namespace MCGalaxy {
+    public static class LevelDB {
+        
+        public static void SaveBlockDB(Level lvl) {
             if (lvl.BlockDB.Cache.Head == null) return;
             if (!lvl.Config.UseBlockDB) { lvl.BlockDB.Cache.Clear(); return; }
 
@@ -40,25 +41,26 @@ namespace MCGalaxy
             Logger.Log(LogType.BackgroundActivity, "Saved BlockDB changes for: {0}", lvl.name);
         }
 
-        static Zone ParseZone(ISqlRecord record) {
+        static object ListZones(IDataRecord record, object arg) {
             Zone z = new Zone();
             z.MinX = (ushort)record.GetInt("SmallX");
             z.MinY = (ushort)record.GetInt("SmallY");
-            z.MinZ = (ushort)record.GetInt("SmallZ");
+            z.MinX = (ushort)record.GetInt("SmallZ");
             
             z.MaxX = (ushort)record.GetInt("BigX");
             z.MaxY = (ushort)record.GetInt("BigY");
-            z.MaxZ = (ushort)record.GetInt("BigZ");
+            z.MaxX = (ushort)record.GetInt("BigZ");
             z.Config.Name = record.GetText("Owner");
-            return z;
+            
+            ((List<Zone>)arg).Add(z);
+            return arg;
         }
         
         internal static void LoadZones(Level level, string map) {
             if (!Database.TableExists("Zone" + map)) return;
             
             List<Zone> zones = new List<Zone>();
-            Database.ReadRows("Zone" + map, "*",
-                                record => zones.Add(ParseZone(record)));
+            Database.ReadRows("Zone" + map, "*", zones, ListZones);
             
             bool changedPerbuild = false;
             for (int i = 0; i < zones.Count; i++) {
@@ -93,18 +95,11 @@ namespace MCGalaxy
             level.hasPortals     = coords.Count > 0;
             if (!level.hasPortals) return;
             
-            int deleted = 0;
-            foreach (Vec3U16 p in coords) 
-            {
+            foreach (Vec3U16 p in coords) {
                 BlockID block = level.GetBlock(p.X, p.Y, p.Z);
                 if (level.Props[block].IsPortal) continue;
-                
                 Portal.Delete(map, p.X, p.Y, p.Z);
-                deleted++;
             }
-            
-            if (deleted == 0) return;
-            Logger.Log(LogType.BackgroundActivity, "Autodeleted {0} non-existent portals in {1}", deleted, level.name);
         }
         
         internal static void LoadMessages(Level level, string map) {
@@ -112,18 +107,11 @@ namespace MCGalaxy
             level.hasMessageBlocks = coords.Count > 0;
             if (!level.hasMessageBlocks) return;
             
-            int deleted = 0;
-            foreach (Vec3U16 p in coords) 
-            {
+            foreach (Vec3U16 p in coords) {
                 BlockID block = level.GetBlock(p.X, p.Y, p.Z);
                 if (level.Props[block].IsMessageBlock) continue;
-                
                 MessageBlock.Delete(map, p.X, p.Y, p.Z);
-                deleted++;
             }
-            
-            if (deleted == 0) return;
-            Logger.Log(LogType.BackgroundActivity, "Autodeleted {0} non-existent message blocks in {1}", deleted, level.name);
         }
         
         internal static ColumnDesc[] createPortals = new ColumnDesc[] {
