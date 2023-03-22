@@ -20,12 +20,10 @@ using System.Collections.Generic;
 using System.IO;
 using MCGalaxy.SQL;
 
-namespace MCGalaxy 
-{
+namespace MCGalaxy {
     /// <summary> Utility methods for backing up and restoring a server. </summary>
-    public static class Backup 
-    {
-        const string zipPath = "MCGalaxy.zip", sqlPath = "SQL.sql";
+    public static class Backup {
+        const string zipPath = "MCGalaxy.zip", sqlPath = "SQL.sql", dbPath = "MCGalaxy.db";
         
         public static void Perform(Player p, bool files, bool db, bool lite, bool compress) {
             if (db) {
@@ -85,7 +83,6 @@ namespace MCGalaxy
             Logger.Log(LogType.SystemActivity, "Compressing {0} files...", paths.Count);
             for (int i = 0; i < paths.Count; i++) {
                 string path = paths[i];
-                // .lvl contents are already compressed, no point in compressing again
                 bool compressThis = compress && !path.CaselessContains(".lvl");
                 
                 try {
@@ -175,7 +172,7 @@ namespace MCGalaxy
             // NOTE: This does NOT account for foreign keys, BLOBs etc. It only works for what we actually put in the DB.
             sql.WriteLine("-- {0} SQL database dump", Server.SoftwareNameVersioned);
             sql.WriteLine("-- Host: {0}", Server.Config.MySQLHost);
-            sql.WriteLine("-- Generated on {0:yyyy-MM-dd} at {0:HH:mm:ss}", DateTime.Now);
+            sql.WriteLine("-- Generated on {0:d} at {0:HH:mm:ss}", DateTime.Now);
             sql.WriteLine();
             sql.WriteLine();
 
