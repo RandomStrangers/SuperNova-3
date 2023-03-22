@@ -33,17 +33,20 @@ namespace MCGalaxy.Authentication
         
         /// <summary> Checks if the given player is allowed to login with the given mppass </summary>
         public virtual bool VerifyLogin(Player p, string mppass) {
+            if (!Server.Config.VerifyNames) return true;
+            
             foreach (AuthService auth in AuthService.Services)
             {
                 if (auth.Authenticate(p, mppass)) return true;
             }
-            
-            foreach (AuthService auth in AuthService.Services)
-            {
-                if (auth.FallbackAuthenticate(p)) return true;
-            }
-            
-            return !Server.Config.VerifyNames || IPUtil.IsPrivate(p.IP);
+            return IPUtil.IsPrivate(p.IP);
+        }
+        
+        /// <summary> Checks if the given player is allowed to login with the 
+        /// given mppass to the given authentication service </summary>
+        public virtual bool VerifyLogin(Player p, string mppass, AuthService service) {
+            string calculated = Server.CalcMppass(p.truename, service.Beat.Salt);
+            return mppass.CaselessEq(calculated);
         }
         
         /// <summary> Informs the given player that they must first
@@ -76,17 +79,6 @@ namespace MCGalaxy.Authentication
         /// <summary> Returns whether the given pasword equals 
         /// the stored password for the given player </summary>
         public abstract bool VerifyPassword(string name, string password);
-        
-        
-        public static bool VerifyPassword(Player p, string password) {
-            if (!Current.VerifyPassword(p.name, password))
-                return false;
-            
-            p.Message("You are now &averified &Sand can now &ause commands, modify blocks, and chat.");
-            p.verifiedPass = true;
-            p.Unverified   = false;
-            return true;
-        }
     }
     
     /// <summary> Authenticator that loads/stores passwords in /extra/passwords folder </summary>
@@ -94,10 +86,15 @@ namespace MCGalaxy.Authentication
     {
         const string PASS_FOLDER = "extra/passwords/";
         
-        public override bool HasPassword(string name) { return GetHashPath(name) != null; }
+        public override bool HasPassword(string name) { return FindHashPath(name) != null; }
+        
+        public override void StorePassword(string name, string password) {
+            string oldPath = FindOldHashPath(name);
+            StorePassword(name, password, oldPath);
+        }
         
         public override bool ResetPassword(string name) {
-            string path = GetHashPath(name);
+            string path = FindHashPath(name);
             if (path == null) return false;
             
             File.Delete(path);
@@ -105,41 +102,49 @@ namespace MCGalaxy.Authentication
         }
         
         public override bool VerifyPassword(string name, string password) { 
-            string path = GetHashPath(name);
-            if (path == null) return false;
+            string path = NewHashPath(name);
+            // If new format exists, that is always used
+            if (File.Exists(path)) return CheckNewHash(path, name, password);
+
+            // Fallback onto old format
+            path = FindOldHashPath(name);
+            if (!CheckOldHash(path, name, password)) return false;
             
-            return CheckHash(path, name, password);
+            // Switch password to new format
+            StorePassword(name, password, path);
+            return true;
         }
         
-        public override void StorePassword(string name, string password) {
-            byte[] hash = ComputeHash(name, password);
+        static void StorePassword(string name, string password, string oldPath) {
+            byte[] hash = ComputeNewHash(name, password);
+            // In case was using old .dat password format before
+            if (oldPath != null) File.Delete(oldPath);
             
             Directory.CreateDirectory(PASS_FOLDER);
-            File.WriteAllBytes(HashPath(name), hash);
-        }
-        
-        
-        static string GetHashPath(string name) {
-            string path = HashPath(name);
-            return File.Exists(path) ? path : null;
+            File.WriteAllBytes(NewHashPath(name), hash);
         }
 
-        static string HashPath(string name) {
-            // unfortunately necessary for backwards compatibility
-            name = Server.ToRawUsername(name);
+        
+        static byte[] ComputeOldHash(string name, string pass) {
+            // Pointless, but kept for backwards compatibility
+            pass = pass.Replace("<", "(");
+            pass = pass.Replace(">", ")");
+
+            MD5 hash = MD5.Create();
+            byte[] nameB = hash.ComputeHash(Encoding.ASCII.GetBytes(name));
+            // This line means that non-ASCII characters in passwords are
+            // all encoded as the "?" character.
+            byte[] dataB = hash.ComputeHash(Encoding.ASCII.GetBytes(pass));
             
-            return PASS_FOLDER + name.ToLower() + ".pwd";
+            byte[] result = new byte[nameB.Length + dataB.Length];
+            Array.Copy(nameB, 0, result, 0,            nameB.Length);
+            Array.Copy(dataB, 0, result, nameB.Length, dataB.Length);
+            return hash.ComputeHash(result);
         }
 
-        static bool CheckHash(string path, string name, string pass) {
-            byte[] stored   = File.ReadAllBytes(path);
-            byte[] computed = ComputeHash(name, pass);
-            return ArraysEqual(computed, stored);
-        }
-
-        static byte[] ComputeHash(string name, string pass) {
+        static byte[] ComputeNewHash(string name, string pass) {
             // The constant string added to the username salt is to mitigate
-            // rainbow tables. We should really have a unique salt for each
+            // rainbox tables. We should really have a unique salt for each
             // user, but this is close enough.
             byte[] data = Encoding.UTF8.GetBytes("0bec662b-416f-450c-8f50-664fd4a41d49" + name.ToLower() + " " + pass);
             return SHA256.Create().ComputeHash(data);
@@ -148,11 +153,56 @@ namespace MCGalaxy.Authentication
         static bool ArraysEqual(byte[] a, byte[] b) {
             if (a.Length != b.Length) return false;
             
-            for (int i = 0; i < a.Length; i++) 
-            {
+            for (int i = 0; i < a.Length; i++) {
                 if (a[i] != b[i]) return false;
             }
             return true;
+        }
+
+        static bool CheckNewHash(string path, string name, string pass) {
+            byte[] stored   = File.ReadAllBytes(path);
+            byte[] computed = ComputeNewHash(name, pass);
+            return ArraysEqual(computed, stored);
+        }
+        
+        static bool CheckOldHash(string path, string name, string pass) {
+            byte[] stored   = File.ReadAllBytes(path);
+            byte[] computed = ComputeOldHash(name, pass);
+
+            // Old passwords stored UTF8 string instead of just the raw 16 byte hashes
+            // We need to support both since this behaviour was accidentally changed
+            if (stored.Length != computed.Length) {
+                return Encoding.UTF8.GetString(stored) == Encoding.UTF8.GetString(computed);
+            }
+            return ArraysEqual(computed, stored);
+        }
+
+        
+        static string NewHashPath(string name) {
+            // unfortunately necessary for backwards compatibility
+            name = Server.ToRawUsername(name);
+            
+            return PASS_FOLDER + name.ToLower() + ".pwd";
+        }
+        
+        static string FindOldHashPath(string name) {
+            string path = PASS_FOLDER + name + ".dat";
+            if (File.Exists(path)) return path;
+
+            // Have to fallback on this for case sensitive file systems
+            string[] files = AtomicIO.TryGetFiles(PASS_FOLDER, "*.dat");
+            if (files == null) return null;
+            
+            foreach (string file in files) {
+                if (file.CaselessEq(path)) return file;
+            }
+            return null;
+        }
+        
+        static string FindHashPath(string name) {
+            string path = NewHashPath(name);
+            if (File.Exists(path)) return path;
+            return FindOldHashPath(name);
         }
     }
 }
