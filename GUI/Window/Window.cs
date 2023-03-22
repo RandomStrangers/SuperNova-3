@@ -1,5 +1,5 @@
 /*    
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/SuperNova)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -22,13 +22,13 @@ using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
-using SuperNova.Events.LevelEvents;
-using SuperNova.Events.PlayerEvents;
-using SuperNova.Generator;
-using SuperNova.Gui.Popups;
-using SuperNova.Tasks;
+using MCGalaxy.Events.LevelEvents;
+using MCGalaxy.Events.PlayerEvents;
+using MCGalaxy.Generator;
+using MCGalaxy.Gui.Popups;
+using MCGalaxy.Tasks;
 
-namespace SuperNova.Gui {
+namespace MCGalaxy.Gui {
     public partial class Window : Form {
         // for cross thread use
         delegate void StringCallback(string s);
@@ -57,8 +57,8 @@ namespace SuperNova.Gui {
 
 Trying to mix two versions is unsupported - you may experience issues";
             string msg = string.Format(fmt, Server.SoftwareName, 
-                                       gui_version, AssemblyFile(typeof(Window), "SuperNova.exe"),
-                                       dll_version, AssemblyFile(typeof(Server), "SuperNova_.dll"));
+                                       gui_version, AssemblyFile(typeof(Window), "MCGalaxy.exe"),
+                                       dll_version, AssemblyFile(typeof(Server), "MCGalaxy_.dll"));
             RunAsync(() => Popup.Warning(msg));
         }
         
