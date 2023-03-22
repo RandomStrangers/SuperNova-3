@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/SuperNova)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -21,7 +21,7 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace SuperNova.Gui 
+namespace MCGalaxy.Gui 
 {
     public static class Program 
     {   
@@ -29,12 +29,12 @@ namespace SuperNova.Gui
         public static void Main(string[] args) {
             Environment.CurrentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             
-            if (!File.Exists("SuperNova_.dll")) {
-                Popup.Error("Cannot start server as SuperNova_.dll is missing from " + Environment.CurrentDirectory 
+            if (!File.Exists("MCGalaxy_.dll")) {
+                Popup.Error("Cannot start server as MCGalaxy_.dll is missing from " + Environment.CurrentDirectory 
                             + "\r\nDownload it from " + Updater.UploadsURL);
                 return;
             }
-            // separate method, in case SuperNova_.dll is missing
+            // separate method, in case MCGalaxy_.dll is missing
             StartGUI();
         }
         

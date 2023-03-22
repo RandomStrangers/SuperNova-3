@@ -19,13 +19,13 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Xml;
-using SuperNova.Network;
+using MCGalaxy.Network;
 //This upnp class comes from http://www.codeproject.com/Articles/27992/NAT-Traversal-with-UPnP-in-C, Modified for use with MCForge
 // Some relatively straightforward documentation on how UPnP works:
 //  http://www.upnp-hacks.org/upnp.html
 //  http://www.upnp-hacks.org/igd.html
 
-namespace SuperNova 
+namespace MCGalaxy 
 {
     public static class UPnP 
     {
