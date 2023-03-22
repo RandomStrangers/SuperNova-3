@@ -19,10 +19,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace MCGalaxy.Commands 
-{  
-    public class Alias 
-    {
+namespace MCGalaxy.Commands {
+    
+    public class Alias {
+        
         public static List<Alias> coreAliases = new List<Alias>();
         public static List<Alias> aliases = new List<Alias>();
         public string Trigger, Target, Format;
@@ -44,10 +44,11 @@ namespace MCGalaxy.Commands
             Trigger = trigger; Target = target; Format = format;
         }
 
-        public static void LoadCustom() {
+        public static void Load() {
             aliases.Clear();
+            coreAliases.Clear();
             
-            if (!File.Exists(Paths.AliasesFile)) { SaveCustom(); return; }
+            if (!File.Exists(Paths.AliasesFile)) { Save(); return; }
             PropertiesFile.Read(Paths.AliasesFile, LineProcessor, ':');
         }
         
@@ -55,7 +56,7 @@ namespace MCGalaxy.Commands
             aliases.Add(new Alias(key, value));
         }
 
-        public static void SaveCustom() {
+        public static void Save() {
             using (StreamWriter sw = new StreamWriter(Paths.AliasesFile)) {
                 sw.WriteLine("# Aliases can be in one of three formats:");
                 sw.WriteLine("# trigger : command");
@@ -65,8 +66,7 @@ namespace MCGalaxy.Commands
                 sw.WriteLine("# trigger : command <prefix> {args} <suffix>");
                 sw.WriteLine("#    e.g. \"mod : setrank {args} mod\" means /mod is treated as /setrank <args given by user> mod");
                 
-                foreach (Alias a in aliases) 
-                {
+                foreach (Alias a in aliases) {
                     if (a.Format == null) {
                         sw.WriteLine(a.Trigger + " : " + a.Target);
                     } else {
@@ -77,12 +77,10 @@ namespace MCGalaxy.Commands
         }
 
         public static Alias Find(string cmd) {
-            foreach (Alias alias in aliases) 
-            {
+            foreach (Alias alias in aliases) {
                 if (alias.Trigger.CaselessEq(cmd)) return alias;
             }
-            foreach (Alias alias in coreAliases) 
-            {
+            foreach (Alias alias in coreAliases) {
                 if (alias.Trigger.CaselessEq(cmd)) return alias;
             }
             return null;
@@ -93,8 +91,7 @@ namespace MCGalaxy.Commands
             CommandAlias[] aliases = cmd.Aliases;
             if (aliases == null) return;
             
-            foreach (CommandAlias a in aliases) 
-            {
+            foreach (CommandAlias a in aliases) {
                 Alias alias = new Alias(a.Trigger, cmd.name, a.Format);
                 coreAliases.Add(alias);
             }

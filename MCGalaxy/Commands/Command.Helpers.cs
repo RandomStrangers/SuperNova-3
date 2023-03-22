@@ -24,22 +24,31 @@ namespace MCGalaxy {
     
     public abstract partial class Command {
 
+        const CommandEnable bothFlags = CommandEnable.Lava | CommandEnable.Zombie;
         public static string GetDisabledReason(CommandEnable enable) {
             if (enable == CommandEnable.Always) return null;
             if (enable == CommandEnable.Economy && !Economy.Enabled)
                 return "economy is disabled.";
-
+            
+            if (enable == bothFlags && !(ZSGame.Instance.Running || LSGame.Instance.Running))
+                return "neither zombie nor lava survival is running.";
+            if (enable == CommandEnable.Zombie && !ZSGame.Instance.Running)
+                return "zombie survival is not running.";
+            if (enable == CommandEnable.Lava)
+                return "lava survival is not running.";
             return null;
         }
         
         protected bool CheckSuper(Player p, string message, string type) {
             if (message.Length > 0 || !p.IsSuper) return false;
-            SuperRequiresArgs(p, type);
+            SuperRequiresArgs(name, p, type);
             return true;
         }
         
-        protected void SuperRequiresArgs(Player p, string type) {
-            p.Message("When using /{0} from {2}, you must provide a {1}.", name, type, p.SuperName);
+        protected void SuperRequiresArgs(Player p, string type) { SuperRequiresArgs(name, p, type); }
+        
+        protected internal static void SuperRequiresArgs(string cmd, Player p, string type) {
+            p.Message("When using /{0} from {2}, you must provide a {1}.", cmd, type, p.SuperName);
         }
         
         protected bool HasExtraPerm(Player p, string cmd, LevelPermission plRank, int num) {
@@ -115,15 +124,14 @@ namespace MCGalaxy {
         }
     }
     
-    public sealed class CommandTypes 
-    {
-        public const string Building = "Building";
-        public const string Chat = "Chat";
-        public const string Economy = "Economy";
-        public const string Games = "Games";
-        public const string Information = "Info";
-        public const string Moderation = "Moderation";
-        public const string Other = "Other";
-        public const string World = "World";
+    public sealed class CommandTypes {
+        public const string Building = "build";
+        public const string Chat = "chat";
+        public const string Economy = "economy";
+        public const string Games = "game";
+        public const string Information = "information";
+        public const string Moderation = "mod";
+        public const string Other = "other";
+        public const string World = "world";
     }
 }
