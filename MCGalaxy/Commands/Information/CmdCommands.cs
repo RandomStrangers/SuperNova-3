@@ -1,5 +1,5 @@
 ﻿/*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -15,10 +15,8 @@ permissions and limitations under the Licenses.
 using System;
 using System.Collections.Generic;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdCommands : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdCommands : Command2 {       
         public override string name { get { return "Commands"; } }
         public override string shortcut { get { return "Cmds"; } }
         public override string type { get { return CommandTypes.Information; } }
@@ -47,7 +45,7 @@ namespace MCGalaxy.Commands.Info
 
             string type = args[0].ToLower();
             if (type == "short" || type == "shortcut" || type == "shortcuts") {
-                 PrintShortcuts(p, modifier);
+                 PrintShortcuts(p, sort);
             } else if (type == "old" || type == "oldmenu" || type == "" || type == "command") {
                  PrintRankCommands(p, sort, modifier, p.group, true);
             } else if (type == "all" || type == "commandall" || type == "commandsall") {
@@ -56,7 +54,7 @@ namespace MCGalaxy.Commands.Info
                 bool any = PrintCategoryCommands(p, sort, modifier, type);
                 if (any) return true;
                 
-                // list commands a rank can use 
+                // list commands a rank can use                
                 Group grp = Group.Find(type);
                 if (grp == null) return false;
                 PrintRankCommands(p, sort, modifier, grp, false);
@@ -72,23 +70,22 @@ namespace MCGalaxy.Commands.Info
                 shortcuts.Add(cmd);
             }
             
-            Paginator.Output(p, shortcuts,
-                             (cmd) => "&b" + cmd.shortcut + " &S[" + cmd.name + "]",
-                             "Commands shortcuts", "shortcuts", modifier);
+            MultiPageOutput.Output(p, shortcuts,
+                                   (cmd) => "&b" + cmd.shortcut + " &S[" + cmd.name + "]",
+                                   "Commands shortcuts", "shortcuts", modifier, false);
         }
         
         static void PrintRankCommands(Player p, string sort, string modifier, Group group, bool own) {
             List<Command> cmds = new List<Command>();
-            foreach (Command c in Command.allCmds) 
-            {
+            foreach (Command c in Command.allCmds) {
                 string disabled = Command.GetDisabledReason(c.Enabled);
-                if (disabled == null && c.Permissions.UsableBy(group.Permission)) cmds.Add(c);
+                if (disabled == null && group.Commands.Contains(c)) cmds.Add(c);
             }   
             
             if (cmds.Count == 0) {
                 p.Message("{0} &Scannot use any commands.", group.ColoredName); return;
             }            
-            SortCommands(cmds, sort);
+            SortCommands(cmds, sort);            
             if (own)
                 p.Message("Available commands:");
             else
@@ -96,8 +93,9 @@ namespace MCGalaxy.Commands.Info
             
             string type = "Cmds " + group.Name;
             if (sort.Length > 0) type += " " + sort;
-            Paginator.Output(p, cmds, Command.GetColoredName,
-                             type, "commands", modifier);
+            MultiPageOutput.Output(p, cmds,
+                                   (cmd) => CmdHelp.GetColor(cmd) + cmd.name,
+                                   type, "commands", modifier, false);
             p.Message("Type &T/Help <command> &Sfor more help on a command.");
         }
         
@@ -108,24 +106,32 @@ namespace MCGalaxy.Commands.Info
             
             string type = "Commands all";
             if (sort.Length > 0) type += " " + sort;
-            Paginator.Output(p, cmds, Command.GetColoredName,
-                             type, "commands", modifier);            
+            MultiPageOutput.Output(p, cmds,
+                                   (cmd) => CmdHelp.GetColor(cmd) + cmd.name,
+                                   type, "commands", modifier, false);            
             p.Message("Type &T/Help <command> &Sfor more help on a command.");
+        }
+        
+        // common shortcuts people tend to use 
+        static string GetCategory(string type) {
+            if (type.CaselessEq("building"))   return CommandTypes.Building;
+            if (type.CaselessEq("eco"))        return CommandTypes.Economy;
+            if (type.CaselessEq("games"))      return CommandTypes.Games;
+            if (type.CaselessEq("info"))       return CommandTypes.Information;
+            if (type.CaselessEq("moderation")) return CommandTypes.Moderation;
+            if (type.CaselessEq("others"))     return CommandTypes.Other;
+            if (type.CaselessEq("maps"))       return CommandTypes.World;
+            return type;
         }
         
         static bool PrintCategoryCommands(Player p, string sort, string modifier, string type) {
             List<Command> cmds = new List<Command>();
+            string category = GetCategory(type);
             bool foundAny = false;
-            
-            // common shortcuts people tend to use
-            type = MapCategory(type);
-            if (type.CaselessEq("eco")) type = CommandTypes.Economy;
 
-            foreach (Command c in Command.allCmds) 
-            {
+            foreach (Command c in Command.allCmds) {
                 string disabled = Command.GetDisabledReason(c.Enabled);
-                string category = MapCategory(c.type);
-                if (!type.CaselessEq(category)) continue;
+                if (!c.type.CaselessEq(category)) continue;
                 
                 if (disabled == null && p.CanUse(c)) cmds.Add(c);
                 foundAny = true;
@@ -133,15 +139,16 @@ namespace MCGalaxy.Commands.Info
             if (!foundAny) return false;
             
             if (cmds.Count == 0) {
-                p.Message("You cannot use any of the {0} commands.", type.Capitalize()); return true;
+                p.Message("You cannot use any of the " + category + " commands."); return true;
             }            
             SortCommands(cmds, sort);
-            p.Message(type.Capitalize() + " commands you may use:");
+            p.Message(category.Capitalize() + " commands you may use:");
 
             type = "Commands " + type;
             if (sort.Length > 0) type += " " + sort;
-            Paginator.Output(p, cmds, Command.GetColoredName,
-                             type, "commands", modifier);
+            MultiPageOutput.Output(p, cmds,
+                                   (cmd) => CmdHelp.GetColor(cmd) + cmd.name,
+                                   type, "commands", modifier, false);
             
             p.Message("Type &T/Help <command> &Sfor more help on a command.");
             return true;
@@ -153,46 +160,20 @@ namespace MCGalaxy.Commands.Info
                           .CompareTo(b.name));
             }
             if (sort == "rank" || sort == "ranks") {
-                cmds.Sort((a, b) => a.Permissions.MinRank
-                          .CompareTo(b.Permissions.MinRank));
+                cmds.Sort((a, b) => CommandPerms.MinPerm(a)
+                          .CompareTo(CommandPerms.MinPerm(b)));
             }
-        }
-        
-        static string MapCategory(string type) {
-            // convert old category/type names
-            if (type == "build")   return CommandTypes.Building;
-            if (type == "chat")    return CommandTypes.Chat;
-            if (type == "economy") return CommandTypes.Economy;
-            if (type == "game")    return CommandTypes.Games;
-            if (type == "mod")     return CommandTypes.Moderation;
-            if (type == "other")   return CommandTypes.Other;
-            if (type == "world")   return CommandTypes.World;
-
-            if (type == "information") return CommandTypes.Information;
-            return type;
-        }
-        
-        internal static string GetCategories() {
-            Dictionary<string, bool> categories = new Dictionary<string, bool>();
-            foreach (Command cmd in Command.allCmds)
-            {
-            	categories[MapCategory(cmd.type)] = true;
-            }
-            
-            List<string> list = new List<string>(categories.Keys);
-            list.Sort();
-            return list.Join(" ");
         }
 
         public override void Help(Player p) {
-            p.Message("&T/Commands [category] <sort by>");
-            p.Message("  &HIf no category is given, outputs all commands you can use.");
-            p.Message("  &HIf category is \"shortcuts\", outputs all command shortcuts.");
-            p.Message("  &HIf category is \"all\", outputs all commands.");
-            p.Message("  &HIf category is a rank name, outputs what that rank can use.");
+            p.Message("&T/Commands [category] <sort>");
+            p.Message("&HIf no category is given, outputs all commands you can use.");
+            p.Message("  &H\"shortcuts\" category outputs all command shortcuts.");
+            p.Message("  &H\"all\" category outputs all commands.");
+            p.Message("  &HIf category is a rank name, outputs all commands that rank can use.");
             p.Message("&HOther command categories:");
-            p.Message("  &H{0}", GetCategories());
-            p.Message("&HSort By is optional, and can be either \"name\" or \"rank\"");
+            p.Message("  &HBuilding Chat Economy Games Info Moderation Other World");
+            p.Message("&HSort is optional, and can be either \"name\" or \"rank\"");
         }
     }
 }

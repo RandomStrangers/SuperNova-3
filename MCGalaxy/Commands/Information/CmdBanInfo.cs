@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -18,14 +18,11 @@
 using System;
 using MCGalaxy.DB;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdBanInfo : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdBanInfo : Command2 {
         public override string name { get { return "BanInfo"; } }
         public override string type { get { return CommandTypes.Moderation; } }
         public override bool UseableWhenFrozen { get { return true; } }
-        public override bool MessageBlockRestricted { get { return false; } }
         
         public override void Use(Player p, string message, CommandData data) {
             if (CheckSuper(p, message, "player name")) return;

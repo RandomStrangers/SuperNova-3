@@ -17,10 +17,8 @@
  */
 using MCGalaxy.Util;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdOpRules : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdOpRules : Command2 {
         public override string name { get { return "OpRules"; } }
         public override string type { get { return CommandTypes.Information; } }
         public override bool UseableWhenFrozen { get { return true; } }

@@ -14,13 +14,11 @@ permissions and limitations under the Licenses.
  */
 using System;
 using System.Collections.Generic;
-using MCGalaxy.Blocks;
+using System.Text.RegularExpressions;
 using BlockID = System.UInt16;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public class CmdSearch : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public class CmdSearch : Command2 {
         public override string name { get { return "Search"; } }
         public override string type { get { return CommandTypes.Information; } }
         public override LevelPermission defaultRank { get { return LevelPermission.Builder; } }
@@ -52,23 +50,23 @@ namespace MCGalaxy.Commands.Info
         
         static void SearchBlocks(Player p, string keyword, string modifier) {
             List<BlockID> blocks = new List<BlockID>();
-            for (int b = 0; b < Block.SUPPORTED_COUNT; b++) {
+            for (int b = 0; b < Block.ExtendedCount; b++) {
                 BlockID block = (BlockID)b;
                 if (Block.ExistsFor(p, block)) blocks.Add(block);
             }
 
             List<string> blockNames = Matcher.Filter(blocks, keyword, 
                                                      b => Block.GetName(p, b), null,
-                                                     b => Block.GetColoredName(p, b));
+                                                     b => CmdBlocks.FormatBlockName(p, b));
             OutputList(p, keyword, "search blocks", "blocks", modifier, blockNames);
         }
         
         static void SearchCommands(Player p, string keyword, string modifier) {
             List<string> commands = Matcher.Filter(Command.allCmds, keyword, cmd => cmd.name,
-                                                   null, Command.GetColoredName);
+                                                   null, cmd => CmdHelp.GetColor(cmd) + cmd.name);
             List<string> shortcuts = Matcher.Filter(Command.allCmds, keyword, cmd => cmd.shortcut,
                                                     cmd => !String.IsNullOrEmpty(cmd.shortcut), 
-                                                    Command.GetColoredName);
+                                                    cmd => CmdHelp.GetColor(cmd) + cmd.name);
             
             // Match both names and shortcuts
             foreach (string shortcutCmd in shortcuts) {
@@ -108,7 +106,7 @@ namespace MCGalaxy.Commands.Info
             if (items.Count == 0) {
                 p.Message("No {0} found containing \"{1}\"", type, keyword);
             } else {
-                Paginator.Output(p, items, item => item, cmd + " " + keyword, type, modifier);
+                MultiPageOutput.Output(p, items, item => item, cmd + " " + keyword, type, modifier, false);
             }
         }
         

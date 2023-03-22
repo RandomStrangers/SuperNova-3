@@ -17,10 +17,8 @@
  */
 using System;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdLoaded : Command2 
-    {
+namespace MCGalaxy.Commands.Info {   
+    public sealed class CmdLoaded : Command2 {       
         public override string name { get { return "Loaded"; } }
         public override string type { get { return CommandTypes.Information; } }
         public override bool UseableWhenFrozen { get { return true; } }
@@ -28,8 +26,8 @@ namespace MCGalaxy.Commands.Info
         public override void Use(Player p, string message, CommandData data) {
             Level[] loaded = LevelInfo.Loaded.Items;
             p.Message("Loaded levels [physics level] (&c[no] &Sif not visitable): ");
-            Paginator.Output(p, loaded, (lvl) => FormatMap(p, lvl),
-                             "Levels", "levels", message);
+            MultiPageOutput.Output(p, loaded, (lvl) => FormatMap(p, lvl),
+                                   "Levels", "levels", message, false);
             p.Message("Use &T/Levels &Sfor all levels.");
         }
         

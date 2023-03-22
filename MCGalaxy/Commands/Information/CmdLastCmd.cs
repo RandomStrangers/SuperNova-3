@@ -17,10 +17,8 @@
 */
 using System;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdLastCmd : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdLastCmd : Command2 {
         public override string name { get { return "LastCmd"; } }
         public override string shortcut { get { return "Last"; } }
         public override string type { get { return CommandTypes.Information; } }
@@ -30,8 +28,7 @@ namespace MCGalaxy.Commands.Info
         public override void Use(Player p, string message, CommandData data) {
             if (message.Length == 0) {
                 Player[] players = PlayerInfo.Online.Items;
-                foreach (Player pl in players) 
-                {
+                foreach (Player pl in players) {
                     if (p.CanSee(pl, data.Rank)) ShowLastCommand(p, pl);
                 }
             } else {

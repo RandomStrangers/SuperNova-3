@@ -1,5 +1,5 @@
 /*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -18,10 +18,8 @@ using MCGalaxy.Blocks;
 using MCGalaxy.Commands.CPE;
 using BlockID = System.UInt16;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdHelp : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdHelp : Command2 {
         public override string name { get { return "Help"; } }
         public override string type { get { return CommandTypes.Information; } }
         public override bool UseableWhenFrozen { get { return true; } }
@@ -48,7 +46,7 @@ namespace MCGalaxy.Commands.Info
         
         static void PrintHelpMenu(Player p) {
             p.Message("&HCommand Categories:");
-            p.Message("  &T{0}", CmdCommands.GetCategories());
+            p.Message("  &TBuilding Chat Economy Games Info Moderation Other World");
             p.Message("&HOther Categories:");
             p.Message("  &TRanks Colors Emotes Shortcuts Commands");
             p.Message("&HTo view help for a category, type &T/Help CategoryName");
@@ -61,8 +59,9 @@ namespace MCGalaxy.Commands.Info
         }
         
         static void PrintRanks(Player p) {
-            foreach (Group grp in Group.GroupList) 
-            {
+            foreach (Group grp in Group.GroupList) {
+                if (grp.Permission >= LevelPermission.Nobody) continue;
+
                 p.Message("{0} &S- Draw: {1}, Perm: {2}, max realms: {3}",
                           grp.ColoredName, grp.DrawLimit, (int)grp.Permission, grp.OverseerMaps);
             }
@@ -73,19 +72,18 @@ namespace MCGalaxy.Commands.Info
             p.Message("Colors Available:");
             
             p.Message("0 - &0{0} &S| 1 - &1{1} &S| 2 - &2{2} &S| 3 - &3{3}",
-                      Colors.Name('0'), Colors.Name('1'), Colors.Name('2'), Colors.Name('3'));
+                           Colors.Name('0'), Colors.Name('1'), Colors.Name('2'), Colors.Name('3'));
             p.Message("4 - &4{0} &S| 5 - &5{1} &S| 6 - &6{2} &S| 7 - &7{3}",
-                      Colors.Name('4'), Colors.Name('5'), Colors.Name('6'), Colors.Name('7'));
+                           Colors.Name('4'), Colors.Name('5'), Colors.Name('6'), Colors.Name('7'));
             
             p.Message("8 - &8{0} &S| 9 - &9{1} &S| a - &a{2} &S| b - &b{3}",
-                      Colors.Name('8'), Colors.Name('9'), Colors.Name('a'), Colors.Name('b'));
+                           Colors.Name('8'), Colors.Name('9'), Colors.Name('a'), Colors.Name('b'));
             p.Message("c - &c{0} &S| d - &d{1} &S| e - &e{2} &S| f - &f{3}",
-                      Colors.Name('c'), Colors.Name('d'), Colors.Name('e'), Colors.Name('f'));
+                           Colors.Name('c'), Colors.Name('d'), Colors.Name('e'), Colors.Name('f'));
             
-            foreach (ColorDesc color in Colors.List) 
-            {
-                if (color.Undefined || Colors.IsStandard(color.Code)) continue;
-                CmdCustomColors.PrintColor(p, color);
+            foreach (ColorDesc col in Colors.List) {
+                if (col.Undefined || Colors.IsStandard(col.Code)) continue;
+                p.Message(CmdCustomColors.FormatColor(col));
             }
         }
         
@@ -95,17 +93,16 @@ namespace MCGalaxy.Commands.Info
             
             string[] args = message.SplitSpaces(2);
             string modifier = args.Length > 1 ? args[1] : "";
-            Paginator.Output(p, emotes, PrintEmote,
-                             "Help emotes", "emotes", modifier);
+            MultiPageOutput.Output(p, emotes, FormatEmote,
+                                   "Help emotes", "emotes", modifier, true);
         }
         
-        static void PrintEmote(Player p, char emote) {
+        static string FormatEmote(char emote) {
             List<string> keywords = new List<string>();
-            foreach (var kvp in EmotesHandler.Keywords) 
-            {
+            foreach (var kvp in EmotesHandler.Keywords) {
                 if (kvp.Value == emote) keywords.Add("(&S" + kvp.Key + ")");
             }
-            p.Message("&f{0} &S- {1}", emote, keywords.Join());
+            return "&f" + emote + " &S- " + keywords.Join();
         }
         
         bool ParseCommand(Player p, string message) {
@@ -212,13 +209,17 @@ namespace MCGalaxy.Commands.Info
         }
         
         bool ParsePlugin(Player p, string message) {
-            foreach (Plugin plugin in Plugin.custom) 
-            {
+            foreach (Plugin plugin in Plugin.all) {
                 if (plugin.name.CaselessEq(message)) {
                     plugin.Help(p); return true;
                 }
             }
             return false;
+        }
+
+        internal static string GetColor(Command cmd) {
+            LevelPermission perm = CommandPerms.MinPerm(cmd);
+            return Group.GetColor(perm);
         }
 
         public override void Help(Player p) {

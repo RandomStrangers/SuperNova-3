@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -17,17 +17,15 @@
 */
 using System;
 using System.Collections.Generic;
+using System.IO;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdRankInfo : Command2 
-    {
+namespace MCGalaxy.Commands.Info { 
+    public sealed class CmdRankInfo : Command2 {        
         public override string name { get { return "RankInfo"; } }
         public override string shortcut { get { return "ri"; } }
         public override string type { get { return CommandTypes.Moderation; } }
         public override LevelPermission defaultRank { get { return LevelPermission.AdvBuilder; } }
         public override bool UseableWhenFrozen { get { return true; } }
-        public override bool MessageBlockRestricted { get { return false; } }
         
         public override void Use(Player p, string name, CommandData data) {
             if (CheckSuper(p, name, "player name")) return;
@@ -67,7 +65,7 @@ namespace MCGalaxy.Commands.Info
                 string reason = args.Length <= offset ? "(no reason given)" : args[offset].Replace("%20", " ");
                
                 p.Message("&aFrom {0} &ato {1} &a{2} ago", 
-                               Group.GetColoredName(oldRank), Group.GetColoredName(newRank),
+                               Group.GetColoredName(oldRank), Group.GetColoredName(newRank), 
                                delta.Shorten(true, false));
                 p.Message("&aBy &S{0}&a, reason: &S{1}", p.FormatNick(args[1]), reason);
             }

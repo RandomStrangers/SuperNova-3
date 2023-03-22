@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -17,15 +17,14 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Data;
 using MCGalaxy.DB;
 using MCGalaxy.Maths;
 using MCGalaxy.SQL;
 using BlockID = System.UInt16;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdAbout : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdAbout : Command2 {
         public override string name { get { return "About"; } }
         public override string shortcut { get { return "b"; } }
         public override string type { get { return CommandTypes.Information; } }
@@ -87,9 +86,8 @@ namespace MCGalaxy.Commands.Info
             BlockDBEntry entry = default(BlockDBEntry);
             entry.OldRaw = Block.Invalid;
             
-            foreach (string[] row in entries)
-            {
-                DateTime time  = Database.ParseDBDate(row[1]).ToUniversalTime();
+            foreach (string[] row in entries) {
+                DateTime time = row[1].ParseDBDate();
                 TimeSpan delta = time - BlockDB.Epoch;
                 entry.TimeDelta = (int)delta.TotalSeconds;
                 entry.Flags = BlockDBFlags.ManualPlace;
@@ -111,7 +109,8 @@ namespace MCGalaxy.Commands.Info
         }
         
         static void OutputEntry(Player p, ref bool foundAny, Dictionary<int, string> names, BlockDBEntry entry) {
-            string name;
+            DateTime now = DateTime.UtcNow;
+            string name = null;
             if (!names.TryGetValue(entry.PlayerID, out name)) {
                 name = NameConverter.FindName(entry.PlayerID);
                 names[entry.PlayerID] = name;

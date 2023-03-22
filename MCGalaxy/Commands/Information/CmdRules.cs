@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -18,10 +18,8 @@
 using System;
 using MCGalaxy.Util;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdRules : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdRules : Command2 {
         public override string name { get { return "Rules"; } }
         public override string type { get { return CommandTypes.Information; } }
         public override CommandPerm[] ExtraPerms {
@@ -74,7 +72,7 @@ namespace MCGalaxy.Commands.Info
             if (p.IsSuper) { p.Message("Only in-game players can disagree with the rules."); return; }
             if (!Server.Config.AgreeToRulesOnEntry) { p.Message("agree-to-rules-on-entry is not enabled."); return; }
             
-            if (data.Rank > LevelPermission.Guest) {
+            if (data.Rank < LevelPermission.AdvBuilder) {
                 p.Message("Your awesomeness prevents you from using this command"); return;
             }
             p.Leave("If you don't agree with the rules, consider playing elsewhere.");

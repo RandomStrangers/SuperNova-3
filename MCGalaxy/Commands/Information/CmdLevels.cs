@@ -18,10 +18,8 @@
 using System;
 using System.IO;
 
-namespace MCGalaxy.Commands.Info 
-{
-    public sealed class CmdLevels : Command2 
-    {
+namespace MCGalaxy.Commands.Info {
+    public sealed class CmdLevels : Command2 {
         public override string name { get { return "Levels"; } }
         public override string shortcut { get { return "Worlds"; } }
         public override string type { get { return CommandTypes.Information; } }
@@ -36,8 +34,8 @@ namespace MCGalaxy.Commands.Info
             Array.Sort(files);
             
             p.Message("Levels (&c[no] &Sif not visitable):");
-            Paginator.Output(p, files, (file) => FormatMap(p, file),
-                             "Levels", "levels", message);
+            MultiPageOutput.Output(p, files, (file) => FormatMap(p, file),
+                                   "Levels", "levels", message, false);
         }
         
         static string FormatMap(Player p, string file) {
