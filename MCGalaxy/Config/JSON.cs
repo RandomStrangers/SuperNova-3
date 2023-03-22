@@ -138,9 +138,7 @@ namespace MCGalaxy.Config {
                 if (offset >= Value.Length) break;
                 c = Cur; offset++;
                 if (c == '/' || c == '\\' || c == '"') { s.Append(c); continue; }
-                if (c == 'n') { s.Append('\n'); continue; }
-                // TODO any other escape codes to add support for
-
+                
                 if (c != 'u') break;
                 if (offset + 4 > Value.Length) break;
                 
@@ -162,15 +160,10 @@ namespace MCGalaxy.Config {
         static bool IsNumber(char c) {
             return c == '-' || c == '.' || (c >= '0' && c <= '9');
         }
-
-        static bool IsNumberPart(char c) {
-            // same as IsNumber, but also accepts exponential notation (e.g. "3.40E+38")
-            return c == '-' || c == '.' || (c >= '0' && c <= '9') || c == 'E' || c == '+';
-        }
-
+        
         string ParseNumber() {
             int start = offset - 1;
-            for (; offset < Value.Length && IsNumberPart(Cur); offset++);
+            for (; offset < Value.Length && IsNumber(Cur); offset++);
             return Value.Substring(start, offset - start);
         }
     }
@@ -296,7 +289,15 @@ namespace MCGalaxy.Config {
     }
     
     public static class Json {
-
+        
+        [Obsolete("Use JsonReader instead")]
+        public static object Parse(string s, out bool success) {
+            JsonReader reader = new JsonReader(s);
+            object obj = reader.Parse();
+            success    = !reader.Failed;
+            return obj;
+        }
+        
         [Obsolete("Use JsonWriter instead")]
         public static void Serialise(TextWriter dst, ConfigElement[] elems, object instance) {
             JsonConfigWriter w = new JsonConfigWriter(dst, elems);
