@@ -1,5 +1,5 @@
 ﻿/*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -14,7 +14,9 @@ permissions and limitations under the Licenses.
 */
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using MCGalaxy.Authentication;
 using MCGalaxy.DB;
@@ -32,7 +34,7 @@ using BlockID = System.UInt16;
 namespace MCGalaxy {
     sealed class ConsolePlayer : Player {
         public ConsolePlayer() : base("(console)") {
-            group = Group.ConsoleRank;
+            group = Group.WotRank;
             color = "&S";
             SuperName = "Console";
         }
@@ -41,7 +43,7 @@ namespace MCGalaxy {
             get { return "Console [&a" + Server.Config.ConsoleName + "&S]"; }
         }
         
-        public override void Message(string message) {
+        public override void Message(byte type, string message) {
             Logger.Log(LogType.ConsoleMessage, message);
         }
     }
@@ -59,21 +61,19 @@ namespace MCGalaxy {
             DisplayName = playername;
             
             SetIP(IPAddress.Loopback);
+            SessionID = Interlocked.Increment(ref sessionCounter) & SessionIDMask;
             IsSuper   = true;
         }
 
-        const int SESSION_ID_MASK = (1 << 20) - 1;
-        public Player(INetSocket socket, IGameSession session) {
+        internal Player(INetSocket socket, ClassicProtocol session) {
             Socket  = socket;
             Session = session;
             SetIP(Socket.IP);
             
             spamChecker = new SpamChecker(this);
-            partialLog  = new List<DateTime>(20);
-            session.ID  = Interlocked.Increment(ref sessionCounter) & SESSION_ID_MASK;
+            SessionID   = Interlocked.Increment(ref sessionCounter) & SessionIDMask;
             
-            for (int b = 0; b < BlockBindings.Length; b++) 
-            {
+            for (int b = 0; b < BlockBindings.Length; b++) {
                 BlockBindings[b] = (BlockID)b;
             }
         }
@@ -119,28 +119,20 @@ namespace MCGalaxy {
         }
         
         public void SetPrefix() {
-            List<string> prefixes = new List<string>(6);
-            prefixes.Add(Game.Referee           ? "&2[Ref] " : "");
-            prefixes.Add(GroupPrefix.Length > 0 ? GroupPrefix + color : "");
+            prefix = Game.Referee ? "&2[Ref] " : "";
+            if (GroupPrefix.Length > 0) { prefix += GroupPrefix + color; }
             
             Team team = Game.Team;
-            prefixes.Add(team == null ? "" : "<" + team.Color + team.Name + color + "> ");
+            prefix += team != null ? "<" + team.Color + team.Name + color + "> " : "";
             
             IGame game = IGame.GameOn(level);
-            prefixes.Add(game == null ? "" : game.GetPrefix(this));
+            if (game != null) game.AdjustPrefix(this, ref prefix);
             
-            bool devPrefix = Server.Config.SoftwareStaffPrefixes &&
-                             Server.Devs.CaselessContains(truename);
-
-            prefixes.Add(devPrefix        ? MakeTitle("Dev", "&9") : "");
-            prefixes.Add(title.Length > 0 ? MakeTitle(title, titlecolor) : "");
-
-            OnSettingPrefixEvent.Call(this, prefixes);
-            prefix = prefixes.Join("");
-        }
-
-        internal string MakeTitle(string title, string titleCol) {
-             return color + "[" + titleCol + title + color + "] ";
+            bool isDev = Server.Devs.CaselessContains(truename);
+            bool devPrefix = Server.Config.SoftwareStaffPrefixes;
+            
+            if (devPrefix && isDev) prefix += MakeTitle("Dev", "&9");
+            if (title.Length > 0)   prefix += MakeTitle(title, titlecolor);
         }
         
         /// <summary> Raises OnSettingColorEvent then sets color. </summary>
@@ -158,6 +150,10 @@ namespace MCGalaxy {
             if (prevCol == color) return;
             Entities.GlobalRespawn(this);
             SetPrefix();
+        }
+        
+        internal string MakeTitle(string title, string titleCol) {
+             return color + "[" + titleCol + title + color + "] ";
         }
         
         public bool IsLikelyInsideBlock() {
@@ -185,11 +181,15 @@ namespace MCGalaxy {
         }
         
         public void SetIP(IPAddress addr) {
+            // Convert IPv4 mapped addresses to IPv4 addresses for consistency
+            //  (e.g. so IPv4 mapped LAN IPs are treated as LAN IPs)
+            if (IPUtil.IsIPv4Mapped(addr)) addr = IPUtil.MapToIPV4(addr);
+            
             IP = addr;
             ip = addr.ToString();
         }
         
-        public bool CanUse(Command cmd) { return cmd.Permissions.UsableBy(this); }
+        public bool CanUse(Command cmd) { return group.Commands.Contains(cmd); }
         public bool CanUse(string cmdName) {
             Command cmd = Command.Find(cmdName);
             return cmd != null && CanUse(cmd);
@@ -211,7 +211,7 @@ namespace MCGalaxy {
         
         /// <summary> Disconnects the player from the server, 
         /// with their default logout message shown in chat. </summary>
-        public void Disconnect() { LeaveServer(PlayerInfo.GetLogoutMessage(this), "disconnected", false); }
+        public void Disconnect() { LeaveServer(PlayerDB.GetLogoutMessage(this), "disconnected", false); }
         
         /// <summary> Kicks the player from the server,
         /// with the given messages shown in chat and in the disconnect packet. </summary>
@@ -320,7 +320,6 @@ namespace MCGalaxy {
             
             DrawOps.Clear();
             if (spamChecker != null) spamChecker.Clear();
-            ClearSerialCommands();
         }
 
         #endregion
@@ -355,16 +354,13 @@ namespace MCGalaxy {
             return true;
         }
         
-        /// <summary> Checks if player is this player requires additional verification </summary>
-        public bool NeedsVerification() {
-            if (verifiedPass) return false;
-            Unverified = Server.Config.verifyadmins && Rank >= Server.Config.VerifyAdminsRank;
-            return Unverified;
-        }
-        
         /// <summary> Checks if player is currently unverified, and if so, sends a message informing them </summary>
         public void CheckIsUnverified() {
-            if (NeedsVerification()) Authenticator.Current.NeedVerification(this);
+            if (verifiedPass) return;
+            Unverified = Server.Config.verifyadmins && Rank >= Server.Config.VerifyAdminsRank;
+            if (!Unverified) return;
+            
+            Authenticator.Current.NeedVerification(this);
         }
         
           

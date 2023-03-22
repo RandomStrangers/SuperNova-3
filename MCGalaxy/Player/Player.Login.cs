@@ -1,5 +1,5 @@
 ﻿/*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -14,11 +14,14 @@ permissions and limitations under the Licenses.
  */
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
-using MCGalaxy.Authentication;
+using MCGalaxy.Commands;
 using MCGalaxy.DB;
 using MCGalaxy.Events.PlayerEvents;
 using MCGalaxy.Games;
+using MCGalaxy.Maths;
+using MCGalaxy.Network;
 using MCGalaxy.SQL;
 using MCGalaxy.Tasks;
 using MCGalaxy.Util;
@@ -27,14 +30,13 @@ namespace MCGalaxy
 {
     public partial class Player : IDisposable 
     { 
-        public bool ProcessLogin(string user, string mppass) {
+        internal bool ProcessLogin(string user, string mppass) {
             LastAction = DateTime.UtcNow;
             name     = user; truename    = user;
-            SkinName = user; DisplayName = user;
-
-            // TODO move to ClassicProtocol
-            if (Session.ProtocolVersion > Server.VERSION_0030) {
-                Leave(null, "Unsupported protocol version " + Session.ProtocolVersion, true); return false;
+            SkinName = user; DisplayName = user; 
+            
+            if (ProtocolVersion > Server.VERSION_0030) {
+                Leave(null, "Unsupported protocol version", true); return false; 
             }
             if (user.Length < 1 || user.Length > 16) {
                 Leave(null, "Usernames must be between 1 and 16 characters", true); return false;
@@ -45,19 +47,31 @@ namespace MCGalaxy
             
             if (Server.Config.ClassicubeAccountPlus) name += "+";
             OnPlayerStartConnectingEvent.Call(this, mppass);
-            if (cancelconnecting) { cancelconnecting = false; return false; }
-                
-            // mppass can be used as /pass when it is not used for name authentication            
-            if (!verifiedName && NeedsVerification() && Authenticator.Current.HasPassword(name))
-                Authenticator.VerifyPassword(this, mppass);
+            if (cancelconnecting) { cancelconnecting = false; return true; }
             
             level   = Server.mainLevel;
             Loading = true;
-            // returns false if disconnected during login
-            return !Socket.Disconnected;
+            if (Socket.Disconnected) return true;
+            
+            UpdateFallbackTable();
+            if (hasCpe) { SendCpeExtensions(); }
+            else { CompleteLoginProcess(); }
+            return true;
         }
         
-        public void CompleteLoginProcess() {
+        void SendCpeExtensions() {
+            extensions = CpeExtension.GetAllEnabled();
+            Send(Packet.ExtInfo((byte)(extensions.Length + 1)));
+            // fix for old classicube java client, doesn't reply if only send EnvMapAppearance with version 2
+            Send(Packet.ExtEntry(CpeExt.EnvMapAppearance, 1));
+            
+            foreach (CpeExt ext in extensions) 
+            {
+                Send(Packet.ExtEntry(ext.Name, ext.ServerVersion));
+            }
+        }
+        
+        internal void CompleteLoginProcess() {
             Player clone = null;
             OnPlayerFinishConnectingEvent.Call(this);
             if (cancelconnecting) { cancelconnecting = false; return; }
@@ -65,23 +79,19 @@ namespace MCGalaxy
             lock (PlayerInfo.Online.locker) {
                 // Check if any players online have same name
                 clone = FindClone(truename);
-                
                 // Remove clone from list (hold lock for as short time as possible)
-                //  NOTE: check 'Server.Config.VerifyNames' too for LAN/localhost IPs
-                if (clone != null && (verifiedName || Server.Config.VerifyNames)) 
-                    PlayerInfo.Online.Remove(clone);
+                if (clone != null && Server.Config.VerifyNames) PlayerInfo.Online.Remove(clone);
 
                 id = NextFreeId();
                 PlayerInfo.Online.Add(this);
             }
             
-            if (clone != null && (verifiedName || Server.Config.VerifyNames)) {
+            if (clone != null && Server.Config.VerifyNames) {
                 string reason = ip == clone.ip ? "(Reconnecting)" : "(Reconnecting from a different IP)";
                 clone.Leave(reason);
             } else if (clone != null) {
                 Leave(null, "Already logged in!", true); return;
             }
-            deathCooldown = DateTime.UtcNow.AddSeconds(2);
 
             SendRawMap(null, level);
             if (Socket.Disconnected) return;
@@ -92,30 +102,29 @@ namespace MCGalaxy
             TotalTime = TimeSpan.FromSeconds(1);
             GetPlayerStats();
             ShowWelcome();
+            
+            Server.Background.QueueOnce(ShowAltsTask, name, TimeSpan.Zero);
             CheckState();
             
-            string nick = PlayerDB.LoadNick(name);
-            if (nick != null) DisplayName = nick;
-            Game.Team   = Team.TeamIn(this);
+            PlayerDB.LoadNick(this);
+            Game.Team = Team.TeamIn(this);
             SetPrefix();
-
             LoadCpeData();
+            
             if (Server.noEmotes.Contains(name)) { parseEmotes = !Server.Config.ParseEmotes; }
 
             hideRank = Rank;
             hidden   = CanUse("Hide") && Server.hidden.Contains(name);
             if (hidden) Message("&8Reminder: You are still hidden.");
             
-            if (Chat.AdminchatPerms.UsableBy(this) && Server.Config.AdminsJoinSilently) {
+            if (Chat.AdminchatPerms.UsableBy(Rank) && Server.Config.AdminsJoinSilently) {
                 hidden = true; adminchat = true;                
             }
 
             OnPlayerConnectEvent.Call(this);
             if (cancellogin) { cancellogin = false; return; }
-
-            Server.Background.QueueOnce(ShowAltsTask, name, TimeSpan.Zero);
-
-            string joinMsg = "&a+ λFULL &S" + PlayerInfo.GetLoginMessage(this);
+            
+            string joinMsg = "&a+ λFULL &S" + PlayerDB.GetLoginMessage(this);
             if (hidden) joinMsg = "&8(hidden)" + joinMsg;
             
             if (Server.Config.GuestJoinsNotify || Rank > LevelPermission.Guest) {
@@ -139,7 +148,12 @@ namespace MCGalaxy
             if (Server.Config.PositionUpdateInterval > 1000)
                 Message("Lowlag mode is currently &aON.");
 
-            Logger.Log(LogType.UserActivity, "{0} [{1}] connected using {2}.", truename, IP, Session.ClientName());
+            if (String.IsNullOrEmpty(appName)) {
+                Logger.Log(LogType.UserActivity, "{0} [{1}] connected.", truename, IP);
+            } else {
+                Logger.Log(LogType.UserActivity, "{0} [{1}] connected using {2}.", truename, IP, appName);
+            }
+            
             PlayerActions.PostSentMap(this, null, level, false);
             Loading = false;
         }
@@ -208,16 +222,14 @@ namespace MCGalaxy
         }
         
         void GetPlayerStats() {
-            PlayerData data = null;
-            Database.ReadRows("Players", "*",
-                                record => data = PlayerData.Parse(record),
-                                "WHERE Name=@0", name);
-            if (data == null) {
+            object raw = Database.ReadRows("Players", "*", null, PlayerData.Read,
+                                           "WHERE Name=@0", name);
+            if (raw == null) {
                 PlayerData.Create(this);
                 Chat.MessageFrom(this, "λNICK &Shas connected for the first time!");
                 Message("Welcome " + ColoredName + "&S! This is your first visit.");
             } else {
-                data.ApplyTo(this);
+                ((PlayerData)raw).ApplyTo(this);
                 Message("Welcome back " + FullName + "&S! You've been here " + TimesVisited + " times!");
             }
             gotSQLData = true;
@@ -252,7 +264,7 @@ namespace MCGalaxy
             string altsMsg = "λNICK &Sis lately known as: " + alts.Join();
 
             Chat.MessageFrom(p, altsMsg,
-                             (pl, obj) => pl.CanSee(p) && opchat.UsableBy(pl));
+                             (pl, obj) => pl.CanSee(p) && opchat.UsableBy(pl.Rank));
                          
             //IRCBot.Say(temp, true); //Tells people in op channel on IRC
             altsMsg = altsMsg.Replace("λNICK", name);

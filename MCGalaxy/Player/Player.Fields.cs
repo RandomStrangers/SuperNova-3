@@ -1,5 +1,5 @@
 ﻿/*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -43,7 +43,9 @@ namespace MCGalaxy {
         public string truename;
         /// <summary> The underlying socket for sending/receiving raw data </summary>
         public INetSocket Socket;
-        public IGameSession Session;
+        public ClassicProtocol Session;
+        public PingList Ping = new PingList();
+        public BlockID MaxRawBlock = Block.CLASSIC_MAX_BLOCK;
         
         public DateTime LastAction, AFKCooldown;
         public bool IsAfk, AutoAfk;
@@ -156,10 +158,14 @@ namespace MCGalaxy {
         public ushort checkpointX, checkpointY, checkpointZ;
         public byte checkpointRotX, checkpointRotY;
         public bool voted;
-        public bool flipHead, infected;
-        public GameProps Game = new GameProps();     
+        public bool flipHead;
+        public GameProps Game = new GameProps();
+        
         /// <summary> Persistent ID of this user in the Players table. </summary>
         public int DatabaseID;
+        public const int SessionIDMask = (1 << 20) - 1;
+        /// <summary> Temp unique ID for this session only. </summary>
+        public int SessionID;
 
         public List<CopyState> CopySlots = new List<CopyState>();
         public int CurrentCopySlot;
@@ -187,13 +193,14 @@ namespace MCGalaxy {
         internal int oldIndex = -1, lastWalkthrough = -1, startFallY = -1, lastFallY = -1;
         public DateTime drownTime = DateTime.MaxValue;
 
-        public DateTime deathCooldown;
+        //Games
+        public DateTime lastDeath = DateTime.UtcNow;
 
         public BlockID ModeBlock = Block.Invalid;
         /// <summary> The block ID this player's client specifies it is currently holding in hand. </summary>
         /// <remarks> This ignores /bind and /mode. GetHeldBlock() is usually preferred. </remarks>
         public BlockID ClientHeldBlock = Block.Stone;
-        public BlockID[] BlockBindings = new BlockID[Block.SUPPORTED_COUNT];
+        public BlockID[] BlockBindings = new BlockID[Block.ExtendedCount];
         public Dictionary<string, string> CmdBindings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         
         public string lastCMD = "";
@@ -210,14 +217,13 @@ namespace MCGalaxy {
         public string PreTeleportMap;
         
         public string summonedMap;
-        public Position _tempPos;
+        internal Position tempPos;
 
         // Extra storage for custom commands
         public ExtrasCollection Extras = new ExtrasCollection();
         
         SpamChecker spamChecker;
         internal DateTime cmdUnblocked;
-        List<DateTime> partialLog;
 
         public WarpList Waypoints = new WarpList();
         public DateTime LastPatrol;
@@ -228,13 +234,12 @@ namespace MCGalaxy {
         public bool verifiedName;
         bool gotSQLData;
         
+        public byte ProtocolVersion;
+        internal byte[] fallback = new byte[256]; // fallback for classic+CPE block IDs
         
-        public bool cancelcommand, cancelchat;
-        public bool cancellogin, cancelconnecting;
         
-        Queue<SerialCommand> serialCmds = new Queue<SerialCommand>();
-        object serialCmdsLock = new object();
-        struct SerialCommand { public Command cmd; public string args; public CommandData data; }
+        public bool cancelcommand, cancelchat, cancelmove;
+        public bool cancellogin, cancelconnecting, cancelDeath;     
       
         /// <summary> Called when a player removes or places a block.
         /// NOTE: Currently this prevents the OnBlockChange event from being called. </summary>

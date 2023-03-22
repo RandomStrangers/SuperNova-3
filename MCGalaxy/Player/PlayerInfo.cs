@@ -1,5 +1,5 @@
 ﻿/*
-Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
 Dual-licensed under the Educational Community License, Version 2.0 and
 the GNU General Public License, Version 3 (the "Licenses"); you may
 not use this file except in compliance with the Licenses. You may
@@ -15,6 +15,7 @@ permissions and limitations under the Licenses.
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using MCGalaxy.DB;
 using MCGalaxy.SQL;
 
@@ -38,6 +39,14 @@ namespace MCGalaxy
         public static string DefaultColor(Player p) {
             string col = PlayerDB.FindColor(p);
             return col.Length > 0 ? col : p.group.Color;
+        }
+        
+        /// <summary> Returns the number of non-hidden players that are currently online </summary>
+        public static int NonHiddenCount() {
+            Player[] players = Online.Items;
+            int count = 0;
+            foreach (Player p in players) { if (!p.hidden) count++; }
+            return count;
         }
         
         public static int NonHiddenUniqueIPCount() {
@@ -69,7 +78,7 @@ namespace MCGalaxy
             if (exact != null && pl.CanSee(exact)) { matches = 1; return exact; }
             
             return Matcher.Find(pl, name, out matches, Online.Items,
-                                p => pl.CanSee(p), p => p.name, p => p.color + p.name, "online players");
+                                p => pl.CanSee(p), p => p.name, "online players");
         }
         
         public static string FindMatchesPreferOnline(Player p, string name) {
@@ -96,18 +105,19 @@ namespace MCGalaxy
         }
 
         
-        static void ReadAccounts(ISqlRecord record, List<string> names) {
-            string name = record.GetText(0);         
+        static object ReadAccounts(IDataRecord record, object arg) {
+            List<string> names = (List<string>)arg;
+            string name = record.GetText(0);
+            
             if (!names.CaselessContains(name)) names.Add(name);
+            return arg;
         }
         
         /// <summary> Retrieves names of all players whose IP address matches the given IP address. </summary>
         /// <remarks> This is current IP for online players, last IP for offline players from the database. </remarks>
         public static List<string> FindAccounts(string ip) {
             List<string> names = new List<string>();
-            Database.ReadRows("Players", "Name", 
-                                record => ReadAccounts(record, names), 
-                                "WHERE IP=@0", ip);
+            Database.ReadRows("Players", "Name", names, ReadAccounts, "WHERE IP=@0", ip);
             
             // TODO: should we instead do save() when the player logs in
             // by checking online players we avoid a DB write though
@@ -120,18 +130,13 @@ namespace MCGalaxy
         }
         
         /// <summary> Filters input list to only players that the source player can see. </summary>
-        public static List<Player> OnlyCanSee(Player p, LevelPermission plRank, 
+        internal static List<Player> OnlyCanSee(Player p, LevelPermission plRank, 
                                                 IEnumerable<Player> players) {
             List<Player> list = new List<Player>();
-            foreach (Player pl in players) 
-            {
+            foreach (Player pl in players) {
                 if (p.CanSee(pl, plRank)) list.Add(pl);
             }
             return list;
-        }
-
-        public static List<Player> GetOnlineCanSee(Player p, LevelPermission plRank) {
-            return OnlyCanSee(p, plRank, Online.Items);
         }
         
         
@@ -162,19 +167,6 @@ namespace MCGalaxy
                 entry.players.Add(pl);
             }
             return entry;
-        }
-
-
-        public static string GetLoginMessage(Player p) {
-            string msg = PlayerDB.GetLoginMessage(p.name);
-            return string.IsNullOrEmpty(msg) ? Server.Config.DefaultLoginMessage : msg;
-        }
-
-        public static string GetLogoutMessage(Player p) {
-            if (p.name == null) return "disconnected";
-
-            string msg = PlayerDB.GetLogoutMessage(p.name);
-            return string.IsNullOrEmpty(msg) ? Server.Config.DefaultLogoutMessage : msg;
         }
     }
     
