@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -42,13 +42,13 @@ namespace MCGalaxy.Commands.Moderation {
                 p.MakeSelection(2, "Selecting region for &SRestore", path, DoRestore);
             } else {
                 p.Message("Backup {0} does not exist.", message);
-                LevelOperations.OutputBackups(p, p.level);
+                LevelInfo.OutputBackups(p, p.level.name);
             }
         }
         
         bool DoRestore(Player p, Vec3S32[] marks, object state, BlockID block) {
             string path  = (string)state;
-            Level source = IMapImporter.Decode(path, "templevel", false);
+            Level source = IMapImporter.Read(path, "templevel", false);
             
             RestoreSelectionDrawOp op = new RestoreSelectionDrawOp();
             op.Source = source;

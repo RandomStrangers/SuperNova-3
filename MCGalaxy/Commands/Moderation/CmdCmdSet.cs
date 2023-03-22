@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -28,14 +28,13 @@ namespace MCGalaxy.Commands.Moderation {
             Command cmd = Command.Find(cmdName);
             
             if (cmd == null) { p.Message("Could not find command entered"); return; }
-            
             if (!p.CanUse(cmd)) {
-                cmd.Permissions.MessageCannotUse(p);
-                p.Message("Therefore you cannot change the permissions of &T/{0}", cmd.name); return;
+                p.Message("Your rank cannot use this command."); return;
             }
             
             if (args.Length == 2) {
-                SetPerms(p, args, data, cmd.Permissions, "command");
+                CommandPerms perms = CommandPerms.Find(cmd.name);
+                SetPerms(p, args, data, perms, "command");
             } else {
                 int num = 0;
                 if (!CommandParser.GetInt(p, args[2], "Extra permission number", ref num)) return;

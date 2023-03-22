@@ -27,9 +27,6 @@ namespace MCGalaxy.Commands.Moderation {
         public override LevelPermission defaultRank { get { return LevelPermission.Operator; } }
         public override bool LogUsage { get { return false; } }
         public override bool UpdatesLastCmd { get { return false; } }
-        public override CommandPerm[] ExtraPerms {
-            get { return new[] { new CommandPerm(LevelPermission.Owner, "can reset passwords") }; }
-        }
         public override CommandAlias[] Aliases {
             get { return new[] { new CommandAlias("SetPass", "set"), new CommandAlias("ResetPass", "reset") }; }
         }
@@ -46,7 +43,7 @@ namespace MCGalaxy.Commands.Moderation {
             if (args.Length == 2 && args[0].CaselessEq("set")) {
                 SetPassword(p, args[1]);
             } else if (args.Length == 2 && args[0].CaselessEq("reset")) {
-                ResetPassword(p, args[1], data);
+                ResetPassword(p, args[1]);
             } else {
                 VerifyPassword(p, message);
             }
@@ -62,11 +59,15 @@ namespace MCGalaxy.Commands.Moderation {
                 return;
             } 
             
-            if (Authenticator.VerifyPassword(p, password)) return;
-            
-             p.passtries++;
-             p.Message("&WWrong Password. &SRemember your password is &Wcase sensitive.");
-             p.Message("Forgot your password? Contact &W{0} &Sto &Wreset it.", Server.Config.OwnerName);
+            if (Authenticator.Current.VerifyPassword(p.name, password)) {
+                p.Message("You are now &averified &Sand can now &ause commands, modify blocks, and chat.");
+                p.verifiedPass = true;
+                p.Unverified   = false;
+            } else {
+                p.passtries++;
+                p.Message("&WWrong Password. &SRemember your password is &Wcase sensitive.");
+                p.Message("Forgot your password? Contact &W{0} &Sto &Wreset it.", Server.Config.OwnerName);
+            }
         }
         
         static void SetPassword(Player p, string password) {
@@ -81,30 +82,29 @@ namespace MCGalaxy.Commands.Moderation {
             p.Message("Your password was &aset to: &c" + password);
         }
         
-        void ResetPassword(Player p, string name, CommandData data) {
-            string target = PlayerInfo.FindMatchesPreferOnline(p, name);
+        void ResetPassword(Player p, string name) {
+            if (name.Length == 0) { Help(p); return; }
+            Player target = PlayerInfo.FindMatches(p, name);
             if (target == null) return;
             
-            if (p.Unverified) {
+            if (!p.IsConsole && p.Unverified) {
                 Authenticator.Current.RequiresVerification(p, "can reset passwords");
                 return;
             }
-            if (!CheckResetPerms(p, data)) return;
+            if (!p.IsConsole && !Server.Config.OwnerName.CaselessEq(p.name))  {
+                p.Message("&WOnly console and the server owner may reset passwords."); return;
+            }
             
-            if (Authenticator.Current.ResetPassword(target)) {
+            if (Authenticator.Current.ResetPassword(target.name)) {
                 p.Message("Reset password for {0}", p.FormatNick(target));
             } else {
                 p.Message("{0} &Sdoes not have a password.", p.FormatNick(target));
             }
         }
-
-        bool CheckResetPerms(Player p, CommandData data) {
-            // check server owner name for permissions backwards compatibility
-            return Server.Config.OwnerName.CaselessEq(p.name) || CheckExtraPerm(p, data, 1);
-        }
         
         public override void Help(Player p) {
             p.Message("&T/Pass reset [player] &H- Resets the password for that player");
+            p.Message("&H Note: Can only be used by console and the server owner.");
             p.Message("&T/Pass set [password] &H- Sets your password to [password]");
             p.Message("&H Note: &WDo NOT set this as your Minecraft password!");
             p.Message("&T/Pass [password]");

@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -81,14 +81,14 @@ namespace MCGalaxy.Commands.Moderation {
             if (reason == null) return false;
             
             if (newRank == banned) {
-                p.Message("Use &T/Ban &Sto change a player's rank to {0}&S.", banned.ColoredName); return false;
+                p.Message("Use /ban to change a player's rank to {0}&S.", banned.ColoredName); return false;
             }
             if (curRank == banned) {
-                p.Message("Use &T/Unban &Sto change a player's rank from &S{0}.", banned.ColoredName); return false;
+                p.Message("Use /unban to change a player's rank from &S{0}.", banned.ColoredName); return false;
             }
             
             if (!CheckRank(p, data, name, curRank.Permission, "change the rank of", false)) return false;            
-            if (newRank.Permission >= data.Rank) {
+            if (!p.IsConsole && newRank.Permission >= data.Rank) {
                 p.Message("Cannot rank a player to a rank equal to or higher than yours."); return false;
             }
             
@@ -121,7 +121,7 @@ namespace MCGalaxy.Commands.Moderation {
             int index = Group.GroupList.IndexOf(curRank);
             if (index < Group.GroupList.Count - 1) {
                 Group next = Group.GroupList[index + 1];
-                return next;
+                if (next.Permission < LevelPermission.Wot) return next;
             }
             p.Message("No higher ranks exist"); return null;
         }

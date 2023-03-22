@@ -2,7 +2,7 @@
     Written by BeMacized
     Assisted by RedNoodle
     
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -64,14 +64,14 @@ namespace MCGalaxy.Commands.Moderation {
             if (Server.reviewlist.Contains(p.name)) {
                 p.Message("You are already in the review queue!"); return;
             }
-     
+
+            bool opsOn = false;
+            Player[] players = PlayerInfo.Online.Items;            
             ItemPerms nextPerms = CommandExtraPerms.Find("Review", 2);
-            bool anyStaff       = false;
             
-            foreach (Player pl in PlayerInfo.GetOnlineCanSee(p, data.Rank)) 
-            {
-                if (nextPerms.UsableBy(pl)) {
-                    anyStaff = true; break;
+            foreach (Player pl in players) {
+                if (nextPerms.UsableBy(pl.Rank) && p.CanSee(pl, data.Rank)) {
+                    opsOn = true; break;
                 }
             }
             
@@ -79,7 +79,7 @@ namespace MCGalaxy.Commands.Moderation {
             int pos = Server.reviewlist.IndexOf(p.name) + 1;
             p.Message("You entered the &creview &Squeue at &aposition #" + pos);
             
-            string msg = anyStaff ? 
+            string msg = opsOn ? 
                 "The online staff have been notified. Someone should be with you shortly." :
                 "There are currently no staff online. Staff will be notified when they join the server.";
             p.Message(msg);

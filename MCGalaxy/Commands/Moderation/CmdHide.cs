@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -58,7 +58,7 @@ namespace MCGalaxy.Commands.Moderation {
                 AnnounceOps(p, "To Ops -λNICK&S- is now &finvisible");               
                 
                 if (!silent) {
-                    string leaveMsg = "&c- λFULL &S" + PlayerInfo.GetLogoutMessage(p);
+                    string leaveMsg = "&c- λFULL &S" + PlayerDB.GetLogoutMessage(p);
                     Chat.MessageFrom(ChatScope.All, p, leaveMsg, null, null, true);
                 }
                 
@@ -70,7 +70,7 @@ namespace MCGalaxy.Commands.Moderation {
                 p.hideRank = LevelPermission.Banned;
                 
                 if (!silent) {
-                    string joinMsg = "&a+ λFULL &S" + PlayerInfo.GetLoginMessage(p);
+                    string joinMsg = "&a+ λFULL &S" + PlayerDB.GetLoginMessage(p);
                     Chat.MessageFrom(ChatScope.All, p, joinMsg, null, null, true);
                 }
                 
