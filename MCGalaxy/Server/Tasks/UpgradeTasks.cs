@@ -17,6 +17,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using MCGalaxy.Bots;
 using MCGalaxy.SQL;
@@ -87,20 +88,21 @@ namespace MCGalaxy.Tasks {
         static void DumpPlayerTimeSpents() {
             playerIds = new List<int>();
             playerSeconds = new List<long>();
-            Database.ReadRows("Players", "ID,TimeSpent", ReadTimeSpent);
+            Database.ReadRows("Players", "ID,TimeSpent", null, ReadTimeSpent);
         }
         
-        static void ReadTimeSpent(ISqlRecord record) {
+        static object ReadTimeSpent(IDataRecord record, object arg) {
             playerCount++;
             try {
                 int id = record.GetInt32(0);
-                TimeSpan span = Database.ParseOldDBTimeSpent(record.GetString(1));
+                TimeSpan span = record.GetString(1).ParseOldDBTimeSpent();
                 
                 playerIds.Add(id);
                 playerSeconds.Add((long)span.TotalSeconds);
             } catch {
                 playerFailed++;
             }
+            return arg;
         }
         
         static void UpgradePlayerTimeSpents() {
