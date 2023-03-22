@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,11 +20,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading;
 using MCGalaxy.Authentication;
-using MCGalaxy.Blocks;
 using MCGalaxy.Commands;
 using MCGalaxy.DB;
 using MCGalaxy.Drawing;
@@ -33,15 +32,13 @@ using MCGalaxy.Events.ServerEvents;
 using MCGalaxy.Games;
 using MCGalaxy.Network;
 using MCGalaxy.Scripting;
-using MCGalaxy.SQL;
 using MCGalaxy.Tasks;
 using MCGalaxy.Util;
 using MCGalaxy.Modules.Awards;
 
-namespace MCGalaxy 
-{
-    public sealed partial class Server 
-    {
+namespace MCGalaxy {
+    public sealed partial class Server {
+        
         public Server() { Server.s = this; }
         
         //True = cancel event
@@ -60,13 +57,13 @@ namespace MCGalaxy
             Logger.Log(type, message);
         }
         
-        public static void CheckFile(string file) {
+        static void CheckFile(string file) {
             if (File.Exists(file)) return;
             
             Logger.Log(LogType.SystemActivity, file + " doesn't exist, Downloading..");
             try {
                 using (WebClient client = HttpUtil.CreateWebClient()) {
-                    client.DownloadFile(Updater.BaseURL + file, file);
+                    client.DownloadFile(Updater.BaseURL + file + "?raw=true", file);
                 }
                 if (File.Exists(file)) {
                     Logger.Log(LogType.SystemActivity, file + " download succesful!");
@@ -81,26 +78,27 @@ namespace MCGalaxy
             serverConfig = ConfigElement.GetAll(typeof(ServerConfig));
             levelConfig  = ConfigElement.GetAll(typeof(LevelConfig));
             zoneConfig   = ConfigElement.GetAll(typeof(ZoneConfig));
-
-            IOperatingSystem.DetectOS().Init();
+            
             #pragma warning disable 0618
             Player.players = PlayerInfo.Online.list;
+            Server.levels = LevelInfo.Loaded.list;
             #pragma warning restore 0618
             
             StartTime = DateTime.UtcNow;
+            shuttingDown = false;
             Logger.Log(LogType.SystemActivity, "Starting Server");
             ServicePointManager.Expect100Continue = false;
             ForceEnableTLS();
-
-            SQLiteBackend.Instance.LoadDependencies();
-#if !MCG_STANDALONE
-            MySQLBackend.Instance.LoadDependencies();
-#endif
+            
+            CheckFile("MySql.Data.dll");
+            CheckFile("sqlite3_x32.dll");
+            CheckFile("sqlite3_x64.dll");
 
             EnsureFilesExist();
-            IScripting.Init();
+            MoveSqliteDll();
+            MoveOutdatedFiles();
 
-            LoadAllSettings(true);
+            LoadAllSettings();
             InitDatabase();
             Economy.LoadDatabase();
 
@@ -127,6 +125,15 @@ namespace MCGalaxy
             try { ServicePointManager.SecurityProtocol |= (SecurityProtocolType)0xC00; } catch { }
         }
         
+        static void MoveSqliteDll() {
+            try {
+                string dll = IntPtr.Size == 8 ? "sqlite3_x64.dll" : "sqlite3_x32.dll";
+                if (File.Exists(dll)) File.Copy(dll, "sqlite3.dll", true);
+            } catch (Exception ex) {
+                Logger.LogError("Error moving SQLite dll", ex);
+            }
+        }
+        
         static void EnsureFilesExist() {
             EnsureDirectoryExists("properties");
             EnsureDirectoryExists("levels");
@@ -142,32 +149,42 @@ namespace MCGalaxy
             EnsureDirectoryExists("extra/bots");
             EnsureDirectoryExists(Paths.ImportsDir);
             EnsureDirectoryExists("blockdefs");
-#if !MCG_STANDALONE
-            EnsureDirectoryExists(MCGalaxy.Modules.Compiling.ICompiler.COMMANDS_SOURCE_DIR); // TODO move to compiling module
-#endif
+            EnsureDirectoryExists(IScripting.DllDir);
+            EnsureDirectoryExists(ICompiler.SourceDir);
             EnsureDirectoryExists("text/discord"); // TODO move to discord plugin
         }
         
         static void EnsureDirectoryExists(string dir) {
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-        }     
+        }
         
-        public static void LoadAllSettings() { LoadAllSettings(false); }
+        static void MoveOutdatedFiles() {
+            try {
+                if (File.Exists("blocks.json")) File.Move("blocks.json", "blockdefs/global.json");
+            }
+            catch { }
+        }        
         
-        // TODO rethink this
-        static void LoadAllSettings(bool commands) {
+        public static void LoadAllSettings() {
+            // Unload custom plugins
+            List<Plugin> plugins = new List<Plugin>(Plugin.all);
+            foreach (Plugin p in plugins) {
+                if (Plugin.core.Contains(p)) continue;
+                Plugin.Unload(p, false);
+            }
+            
+            ZSGame.Instance.infectMessages = ZSConfig.LoadInfectMessages();
             Colors.Load();
-            Alias.LoadCustom();
+            Alias.Load();
             BlockDefinition.LoadGlobal();
             ImagePalette.Load();
             
             SrvProperties.Load();
-            if (commands) Command.InitAll();
             AuthService.ReloadDefault();
             Group.LoadAll();
             CommandPerms.Load();
+            Command.InitAll();
             Block.SetBlocks();
-            BlockPerms.Load();
             AwardsList.Load();
             PlayerAwards.Load();
             Economy.Load();
@@ -184,10 +201,15 @@ namespace MCGalaxy
             announcementsFile.EnsureExists();
             announcements = announcementsFile.GetText();
             
+            // Reload custom plugins
+            foreach (Plugin p in plugins) {
+                if (Plugin.core.Contains(p)) continue;
+                Plugin.Load(p, false);
+            }
+            
             OnConfigUpdatedEvent.Call();
         }
         
-
         static readonly object stopLock = new object();
         static volatile Thread stopThread;
         public static Thread Stop(bool restart, string msg) {
@@ -206,7 +228,10 @@ namespace MCGalaxy
             } catch { }
             
             // Stop accepting new connections and disconnect existing sessions
-            Listener.Close();            
+            try {
+                if (Listener != null) Listener.Close();
+            } catch (Exception ex) { Logger.LogError(ex); }
+            
             try {
                 Player[] players = PlayerInfo.Online.Items;
                 foreach (Player p in players) { p.Leave(msg); }
@@ -222,7 +247,16 @@ namespace MCGalaxy
             Plugin.UnloadAll();
 
             try {
-                string autoload = SaveAllLevels();
+                string autoload = null;
+                Level[] loaded = LevelInfo.Loaded.Items;
+                foreach (Level lvl in loaded) {
+                    if (!lvl.SaveChanges) continue;
+                    
+                    autoload = autoload + lvl.name + "=" + lvl.physics + Environment.NewLine;
+                    lvl.Save();
+                    lvl.SaveBlockDBChanges();
+                }
+                
                 if (Server.SetupFinished && !Server.Config.AutoLoadMaps) {
                     File.WriteAllText("text/autoload.txt", autoload);
                 }
@@ -237,48 +271,48 @@ namespace MCGalaxy
             if (restarting) {
                 // first try to use excevp to restart in CLI mode under mono 
                 // - see detailed comment in HACK_Execvp for why this is required
-                IOperatingSystem.DetectOS().RestartProcess();
-
-                Process.Start(GetRestartPath());
+                if (HACK_TryExecvp()) HACK_Execvp();
+                Process.Start(RestartPath);
             }
             Environment.Exit(0);
         }
-
-        public static string SaveAllLevels() {
-            string autoload = null;
-            Level[] loaded  = LevelInfo.Loaded.Items;
-
-            foreach (Level lvl in loaded)
-            {
-                if (!lvl.SaveChanges) continue;
-
-                autoload = autoload + lvl.name + "=" + lvl.physics + Environment.NewLine;
-                lvl.Save();
-                lvl.SaveBlockDBChanges();
+        
+        [DllImport("libc", SetLastError = true)]
+        static extern int execvp(string path, string[] argv);
+        
+        static bool HACK_TryExecvp() {
+            return CLIMode && Environment.OSVersion.Platform == PlatformID.Unix 
+                && RunningOnMono();
+        }
+        
+        static void HACK_Execvp() {
+            // With using normal Process.Start with mono, after Environment.Exit
+            //  is called, all FDs (including standard input) are also closed.
+            // Unfortunately, this causes the new server process to constantly error with
+            //   Type: IOException
+            //   Message: Invalid handle to path "server_folder_path/[Unknown]"
+            //   Trace:   at System.IO.FileStream.ReadData (System.Runtime.InteropServices.SafeHandle safeHandle, System.Byte[] buf, System.Int32 offset, System.Int32 count) [0x0002d]
+            //     at System.IO.FileStream.ReadInternal (System.Byte[] dest, System.Int32 offset, System.Int32 count) [0x00026]
+            //     at System.IO.FileStream.Read (System.Byte[] array, System.Int32 offset, System.Int32 count) [0x000a1] 
+            //     at System.IO.StreamReader.ReadBuffer () [0x000b3]
+            //     at System.IO.StreamReader.Read () [0x00028]
+            //     at System.TermInfoDriver.GetCursorPosition () [0x0000d]
+            //     at System.TermInfoDriver.ReadUntilConditionInternal (System.Boolean haltOnNewLine) [0x0000e]
+            //     at System.TermInfoDriver.ReadLine () [0x00000]
+            //     at System.ConsoleDriver.ReadLine () [0x00000]
+            //     at System.Console.ReadLine () [0x00013]
+            //     at MCGalaxy.Cli.CLI.ConsoleLoop () [0x00002]
+            // (this errors multiple times a second and can quickly fill up tons of disk space)
+            // And also causes console to be spammed with '1R3;1R3;1R3;' or '363;1R;363;1R;'
+            //
+            // Note this issue does NOT happen with GUI mode for some reason - and also
+            // don't want to use excevp in GUI mode, otherwise the X socket FDs pile up
+            try {
+                execvp("mono", new string[] { "mono", RestartPath });
+            } catch {
             }
-            return autoload;
         }
-
-
-        public static string GetServerDLLPath() {
-            return Assembly.GetExecutingAssembly().Location;
-        }
-
-        public static string GetRestartPath() {
-#if !NETSTANDARD
-            return RestartPath;
-#else
-            // NET core/5/6 executables tend to use the following structure:
-            //   MCGalaxyCLI_core --> MCGalaxyCLI_core.dll
-            // in this case, 'RestartPath' will include '.dll' since this file
-            //  is actually the managed assembly, but we need to remove '.dll'
-            //   as the actual executable which must be started is the non .dll file
-            string path = RestartPath;
-            if (path.CaselessEnds(".dll")) path = path.Substring(0, path.Length - 4);
-            return path;
-#endif
-        }
-
+        
         static bool checkedOnMono, runningOnMono;
         public static bool RunningOnMono() {
             if (!checkedOnMono) {
@@ -287,7 +321,6 @@ namespace MCGalaxy
             }
             return runningOnMono;
         }
-
 
         public static void UpdateUrl(string url) {
             if (OnURLChange != null) OnURLChange(url);
@@ -323,17 +356,17 @@ namespace MCGalaxy
         }
         
         public static void DoGC() {
-            var sw = Stopwatch.StartNew();
             long start = GC.GetTotalMemory(false);
             GC.Collect();
             GC.WaitForPendingFinalizers();
             
             long end = GC.GetTotalMemory(false);
             double deltaKB = (start - end) / 1024.0;
-            if (deltaKB < 100.0) return;
-            
-            Logger.Log(LogType.BackgroundActivity, "GC performed in {0:F2} ms (tracking {1:F2} KB, freed {2:F2} KB)",
-                       sw.Elapsed.TotalMilliseconds, end / 1024.0, deltaKB);
+            if (deltaKB >= 100.0) {
+                string track = (end / 1024.0).ToString("F2");
+                string delta = deltaKB.ToString("F2");
+                Logger.Log(LogType.BackgroundActivity, "GC performed (tracking {0} KB, freed {1} KB)", track, delta);
+            }
         }
         
         

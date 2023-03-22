@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -17,32 +17,34 @@
  */
 using System;
 using System.Collections.Generic;
+using System.IO;
 using MCGalaxy.Config;
 using MCGalaxy.Modules.Relay.IRC;
 
-namespace MCGalaxy 
-{
-    public sealed class ServerConfig : EnvConfig 
-    {
+namespace MCGalaxy {
+    public sealed class ServerConfig : EnvConfig {
+
         [ConfigString("server-name", "Server", "[MCGalaxy] Default", false, " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")]
         public string Name = "[MCGalaxy] Default";
         [ConfigString("motd", "Server", "Welcome", false)]
         public string MOTD = "Welcome!";
-        [ConfigInt("max-players", "Server", 16, 1, Server.MAX_PLAYERS)]
-        public int MaxPlayers = 16;
-        [ConfigInt("max-guests", "Server", 14, 1, Server.MAX_PLAYERS)]
-        public int MaxGuests = 14;
+        [ConfigInt("max-players", "Server", 12, 1, Server.MAX_PLAYERS)]
+        public int MaxPlayers = 12;
+        [ConfigInt("max-guests", "Server", 10, 1, Server.MAX_PLAYERS)]
+        public int MaxGuests = 10;
+        [ConfigString("listen-ip", "Server", "0.0.0.0")]
+        public string ListenIP = "0.0.0.0";
         [ConfigInt("port", "Server", 25565, 0, 65535)]
         public int Port = 25565;
         [ConfigBool("public", "Server", false)]
         public bool Public = false;
         [ConfigBool("verify-names", "Server", true)]
         public bool VerifyNames = true;
+        [ConfigBool("support-web-client", "Server", true)]
+        public bool WebClient = true;
         [ConfigString("default-rank", "Server", "guest")]
         public string DefaultRankName = "guest";
-        [ConfigString("server-owner", "Server", "the owner")]
-        public string OwnerName = "the owner";
-
+        
         [ConfigBool("autoload", "Level", true)]
         public bool AutoLoadMaps = true;        
         /// <summary> true if maps sees server-wide chat, false if maps have level-only/isolated chat </summary>
@@ -53,22 +55,15 @@ namespace MCGalaxy
         [ConfigString("default-texture-url", "Level", "", true)]
         public string DefaultTerrain = "";
         [ConfigString("default-texture-pack-url", "Level", "", true)]
-        public string DefaultTexture = "";          
-
-        [ConfigBool("use-whitelist", "Security", false)]
-        public bool WhitelistedOnly = false;        
-        [ConfigBool("admin-verification", "Security", true)]
-        public bool verifyadmins = true;
-        [ConfigPerm("verify-admin-perm", "Security", LevelPermission.Operator)]
-        public LevelPermission VerifyAdminsRank = LevelPermission.Operator;
+        public string DefaultTexture = "";
         
-        [ConfigBool("support-web-client", "Webclient", true)]
-        public bool WebClient = true;
-        [ConfigBool("allow-ip-forwarding", "Webclient", true)]
-        public bool AllowIPForwarding = true;
-
+        [ConfigString("ssl-certificate-path", "Other", "", true)]
+        public string SslCertPath = "";
+        [ConfigString("ssl-certificate-password", "Other", "", true)]
+        public string SslCertPass = "";
         [ConfigString("HeartbeatURL", "Other", "http://www.classicube.net/heartbeat.jsp", false, ":/.,")]
-        public string HeartbeatURL = "http://www.classicube.net/heartbeat.jsp";        
+        public string HeartbeatURL = "http://www.classicube.net/heartbeat.jsp";
+        
         [ConfigBool("core-secret-commands", "Other", true)]
         public bool CoreSecretCommands = true;
         [ConfigBool("restart-on-error", "Error handling", true)]
@@ -78,6 +73,8 @@ namespace MCGalaxy
         
         [ConfigInt("position-interval", "Other", 100, 20, 2000)]
         public int PositionUpdateInterval = 100;
+        [ConfigBool("classicube-account-plus", "Server", false)]
+        public bool ClassicubeAccountPlus = false;
         [ConfigBool("agree-to-rules-on-entry", "Other", false)]
         public bool AgreeToRulesOnEntry = false;
         [ConfigBool("admins-join-silent", "Other", false)]
@@ -98,7 +95,7 @@ namespace MCGalaxy
         public bool PhysicsRestart = true;
         [ConfigInt("physics-undo-max", "Other", 50000)]
         public int PhysicsUndo = 50000;
-
+        
         [ConfigTimespan("backup-time", "Backup", 300, false)]
         public TimeSpan BackupInterval = TimeSpan.FromSeconds(300);
         [ConfigTimespan("blockdb-backup-time", "Backup", 60, false)]
@@ -113,12 +110,16 @@ namespace MCGalaxy
         public int MaxBotsPerLevel = 192;
         [ConfigBool("deathcount", "Other", true)]
         public bool AnnounceDeathCount = true;
+        [ConfigBool("use-whitelist", "Other", false)]
+        public bool WhitelistedOnly = false;
         [ConfigBool("repeat-messages", "Other", false)]
         public bool RepeatMBs = false;
         [ConfigTimespan("announcement-interval", "Other", 5, true)]
         public TimeSpan AnnouncementInterval = TimeSpan.FromMinutes(5);
         [ConfigString("money-name", "Other", "moneys")]
-        public string Currency = "moneys";
+        public string Currency = "moneys";        
+        [ConfigString("server-owner", "Other", "the owner")]
+        public string OwnerName = "the owner";
         
         [ConfigBool("guest-limit-notify", "Other", false)]
         public bool GuestLimitNotify = false;
@@ -141,27 +142,13 @@ namespace MCGalaxy
         public float DrawReloadThreshold = 0.001f;
         [ConfigBool("allow-tp-to-higher-ranks", "Other", true)]
         public bool HigherRankTP = true;        
-        [ConfigPerm("os-perbuild-default", "Other", LevelPermission.Owner)]
-        public LevelPermission OSPerbuildDefault = LevelPermission.Owner; 
-        [ConfigBool("protect-staff-ips", "Other", true)]
-        public bool ProtectStaffIPs = true;
-        [ConfigBool("classicube-account-plus", "Other", false)]
-        public bool ClassicubeAccountPlus = false;
-        // technically a Server option, but it's a common mistake to think
-        //  this option needs changing to server's IP (0.0.0.0 = listen on all network interfaces)
-        [ConfigString("listen-ip", "Other", "0.0.0.0")]
-        public string ListenIP = "0.0.0.0";
-        [ConfigStringList("disabled-commands", "Other")]
-        public List<string> DisabledCommands = new List<string>();
-        [ConfigStringList("disabled-modules", "Other")]
-        public List<string> DisabledModules = new List<string>();
-        [ConfigTimespan("death-invulnerability-cooldown", "Other", 2, false)]
-        public TimeSpan DeathCooldown = TimeSpan.FromSeconds(2);
-
+        [ConfigPerm("os-perbuild-default", "Other", LevelPermission.Console)]
+        public LevelPermission OSPerbuildDefault = LevelPermission.Console;        
+        
         [ConfigBool("irc", "IRC bot", false)]
         public bool UseIRC = false;
-        [ConfigInt("irc-port", "IRC bot", 6697, 0, 65535)]
-        public int IRCPort = 6697;
+        [ConfigInt("irc-port", "IRC bot", 6667, 0, 65535)]
+        public int IRCPort = 6667;
         [ConfigString("irc-server", "IRC bot", "irc.esper.net")]
         public string IRCServer = "irc.esper.net";
         [ConfigString("irc-nick", "IRC bot", "ForgeBot")]
@@ -221,7 +208,7 @@ namespace MCGalaxy
         [ConfigBool("dollar-before-dollar", "Chat", true)]
         public bool DollarNames = true;
         [ConfigStringList("disabledstandardtokens", "Chat")]
-        public List<string> DisabledChatTokens = new List<string>();
+        internal List<string> DisabledChatTokens = new List<string>();
         [ConfigBool("profanity-filter", "Chat", false)]
         public bool ProfanityFiltering = false;
         [ConfigString("profanity-replacement", "Chat", "*")]
@@ -233,6 +220,8 @@ namespace MCGalaxy
         public string DefaultColor = "&e";
         [ConfigColor("irc-color", "Colors", "&5")]
         public string IRCColor = "&5";
+        [ConfigColor("global-chat-color", "Colors", "&6")]
+        public string GlobalChatColor = "&6";
         [ConfigColor("help-syntax-color", "Colors", "&a")]
         public string HelpSyntaxColor = "&a";
         [ConfigColor("help-desc-color", "Colors", "&e")]
@@ -240,7 +229,7 @@ namespace MCGalaxy
         [ConfigColor("warning-error-color", "Colors", "&c")]
         public string WarningErrorColor = "&c";
         
-        [ConfigBool("cheapmessage", "Messages", true)]
+        [ConfigBool("cheapmessage", "Other", true)]
         public bool ShowInvincibleMessage = true;        
         [ConfigString("cheap-message-given", "Messages", " is now invincible")]
         public string InvincibleMessage = " is now invincible";
@@ -251,16 +240,12 @@ namespace MCGalaxy
         [ConfigString("custom-promote-message", "Messages", "&6Congratulations for working hard and getting &2PROMOTED!")]
         public string DefaultPromoteMessage = "&6Congratulations for working hard and getting &2PROMOTED!";
         [ConfigString("custom-demote-message", "Messages", "&4DEMOTED! &6We're sorry for your loss. Good luck on your future endeavors! &1:'(")]
-        public string DefaultDemoteMessage = "&4DEMOTED! &6We're sorry for your loss. Good luck on your future endeavors! &1:'(";
+        public string DefaultDemoteMessage = "&4DEMOTED! &6We're sorry for your loss. Good luck on your future endeavors! &1:'(";       
         [ConfigString("custom-restart-message", "Messages", "Server restarted. Sign in again and rejoin.")]
         public string DefaultRestartMessage = "Server restarted. Sign in again and rejoin.";
         [ConfigString("custom-whitelist-message", "Messages", "This is a private server!")]
         public string DefaultWhitelistMessage = "This is a private server!";
-        [ConfigString("default-login-message", "Messages", "connected")]
-        public string DefaultLoginMessage = "connected";
-        [ConfigString("default-logout-message", "Messages", "disconnected")]
-        public string DefaultLogoutMessage = "disconnected";
-
+        
         static readonly bool[] defLogLevels = new bool[] { 
             true,true,true,true,true,true, true,true,true, 
             true,true,true,true,true,true, true,true };
@@ -270,6 +255,11 @@ namespace MCGalaxy
         public bool[] FileLogging = defLogLevels;
         [ConfigBoolArray("console-logging", "Logging", true, 17)]
         public bool[] ConsoleLogging = defLogLevels;
+        
+        [ConfigBool("admin-verification", "Admin", true)]
+        public bool verifyadmins = true;
+        [ConfigPerm("verify-admin-perm", "Admin", LevelPermission.Operator)]
+        public LevelPermission VerifyAdminsRank = LevelPermission.Operator;
         
         [ConfigBool("mute-on-spam", "Spam control", false)]
         public bool ChatSpamCheck = false;

@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -17,13 +17,13 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using MCGalaxy.SQL;
 
-namespace MCGalaxy
-{
-    public sealed partial class Server
-    {
+namespace MCGalaxy {
+    public sealed partial class Server {
+        
         static ColumnDesc[] playersTable = new ColumnDesc[] {
             new ColumnDesc("ID", ColumnType.Integer, priKey: true, autoInc: true, notNull: true),
             new ColumnDesc("Name", ColumnType.VarChar, 17),
@@ -53,8 +53,7 @@ namespace MCGalaxy
                 
         static void InitDatabase() {
             if (!Directory.Exists("blockdb")) Directory.CreateDirectory("blockdb");
-
-            Logger.Log(LogType.SystemActivity, "Using {0} for database backend", Database.Backend.EngineName);
+            
             try {
                 Database.Backend.CreateDatabase();
             } catch (Exception e) {

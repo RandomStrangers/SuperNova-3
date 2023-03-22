@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,10 +20,8 @@ using System.Collections.Generic;
 using MCGalaxy.Network;
 using MCGalaxy.Tasks;
 
-namespace MCGalaxy 
-{
-    public sealed partial class Server 
-    {
+namespace MCGalaxy {
+    public sealed partial class Server {
         public static bool cancelcommand;        
         public delegate void OnConsoleCommand(string cmd, string message);
         public static event OnConsoleCommand ConsoleCommand;
@@ -40,7 +38,7 @@ namespace MCGalaxy
         public static PlayerMetaList Notes = new PlayerMetaList("text/notes.txt");
         
         /// <summary> *** DO NOT USE THIS! *** Use VersionString, as this field is a constant and is inlined if used. </summary>
-        public const string InternalVersion = "1.9.4.7";
+        public const string InternalVersion = "1.9.3.9";
         public static string Version { get { return InternalVersion; } }
         
         public static string SoftwareName = "MCGalaxy";
@@ -51,20 +49,24 @@ namespace MCGalaxy
             set { fullName = value; }
         }
 
-        public static INetListen Listener = new TcpListen();
+        // URL for connecting to the server
+        public static string URL = String.Empty;
+        public static INetListen Listener;
 
         //Other
         public static bool SetupFinished, CLIMode;
         
-        public static PlayerList whiteList, invalidIds;
+        public static PlayerList bannedIP, whiteList, invalidIds;
         public static PlayerList ignored, hidden, agreed, vip, noEmotes, lockdown;
         public static PlayerExtList models, skins, reach, rotations, modelScales;
-        public static PlayerExtList bannedIP, frozen, muted, tempBans, tempRanks;
+        public static PlayerExtList frozen, muted, tempBans, tempRanks;
         
         public static readonly List<string> Devs = new List<string>() { "Hetal", "UclCommander" };
         public static readonly List<string> Opstats = new List<string>() { "ban", "tempban", "xban", "banip", "kick", "warn", "mute", "freeze", "setrank" };
 
         public static Level mainLevel;
+        [Obsolete("Use LevelInfo.Loaded.Items")]
+        public static List<Level> levels;
 
         public static PlayerList reviewlist = new PlayerList();
         static string[] announcements = new string[0];
@@ -80,7 +82,6 @@ namespace MCGalaxy
         public static Scheduler MainScheduler = new Scheduler("MCG_MainScheduler");
         public static Scheduler Background = new Scheduler("MCG_BackgroundScheduler");
         public static Scheduler Critical = new Scheduler("MCG_CriticalScheduler");
-        public static Scheduler Heartbeats = new Scheduler("MCG_HeartbeatsScheduler");
         public static Server s = new Server();
 
         public const byte VERSION_0016 = 3; // classic 0.0.16

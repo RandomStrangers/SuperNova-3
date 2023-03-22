@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the    Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -18,18 +18,25 @@
 using System;
 using System.IO;
 using MCGalaxy.Commands;
+using MCGalaxy.Games;
 using MCGalaxy.SQL;
 
-namespace MCGalaxy 
-{
-    public static class SrvProperties 
-    {
+namespace MCGalaxy {
+    
+    public static class SrvProperties {
+        
         public static void Load() {
             old = new OldPerms();
             if (PropertiesFile.Read(Paths.ServerPropsFile, ref old, LineProcessor))
                 Server.SettingsUpdate();
-
-            Database.UpdateActiveBackend();
+            
+            CountdownGame.Config.Load();
+            ZSGame.Config.Load();
+            LSGame.Config.Load();
+            CTFGame.Config.Load();
+            TWGame.Config.Load();
+            
+            Database.Backend = Server.Config.UseMySQL ? MySQLBackend.Instance : SQLiteBackend.Instance;
             
             if (!Directory.Exists(Server.Config.BackupDirectory))
                 Server.Config.BackupDirectory = "levels/backups";
@@ -157,16 +164,21 @@ namespace MCGalaxy
             w.WriteLine("#   irc-port                      = The port to use to connect");
             w.WriteLine("#   irc-identify                  = (true/false)    Do you want the IRC bot to Identify itself with nickserv. Note: You will need to register it's name with nickserv manually.");
             w.WriteLine("#   irc-password                  = The password you want to use if you're identifying with nickserv");
+            w.WriteLine("#   anti-tunnels                  = Stops people digging below max-depth");
+            w.WriteLine("#   max-depth                     = The maximum allowed depth to dig down");
             w.WriteLine("#   backup-time                   = The number of seconds between automatic backups");
             w.WriteLine("#   overload                      = The higher this is, the longer the physics is allowed to lag.  Default 1500");
             w.WriteLine("#   use-whitelist                 = Switch to allow use of a whitelist to override IP bans for certain players.  Default false.");
+            w.WriteLine("#   premium-only                  = Only allow premium players (paid for minecraft) to access the server. Default false.");
             w.WriteLine("#   force-cuboid                  = Run cuboid until the limit is hit, instead of canceling the whole operation.  Default false.");
             w.WriteLine("#   profanity-filter              = Replace certain bad words in the chat.  Default false.");
             w.WriteLine("#   notify-on-join-leave          = Show a balloon popup in tray notification area when a player joins/leaves the server.  Default false.");
             w.WriteLine("#   allow-tp-to-higher-ranks      = Allows the teleportation to players of higher ranks");
             w.WriteLine("#   agree-to-rules-on-entry       = Forces all new players to the server to agree to the rules before they can build or use commands.");
+            w.WriteLine("#   adminchat-perm                = The rank required to view adminchat. Default rank is superop.");
             w.WriteLine("#   admins-join-silent            = Players who have adminchat permission join the game silently. Default true");
             w.WriteLine("#   server-owner                  = The minecraft name, of the owner of the server.");
+            w.WriteLine("#   total-undo                    = Track changes made by the last X people logged on for undo purposes. Folder is rotated when full, so when set to 200, will actually track around 400.");
             w.WriteLine("#   guest-limit-notify            = Show -Too Many Guests- message in chat when maxGuests has been reached. Default false");
             w.WriteLine("#   guest-join-notify             = Shows when guests and lower ranks join server in chat and IRC. Default true");
             w.WriteLine("#   guest-leave-notify            = Shows when guests and lower ranks leave server in chat and IRC. Default true");
@@ -199,6 +211,7 @@ namespace MCGalaxy
             w.WriteLine("#   spam-messages                 = 5");
             w.WriteLine("#   spam-mute-time                = 60");
             w.WriteLine("#   spam-counter-reset-time       = 2");
+            w.WriteLine("#   bufferblocks                  = Should buffer blocks by default for maps?");
             w.WriteLine();
             
             ConfigElement.Serialise(Server.serverConfig, w, Server.Config);
