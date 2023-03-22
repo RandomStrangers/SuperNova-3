@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,26 +20,30 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace MCGalaxy 
-{
+namespace MCGalaxy {
+
     /// <summary> Represents which ranks are allowed (and which are disallowed) to use an item. </summary>
-    public class ItemPerms 
-    {
+    public class ItemPerms {
         public virtual string ItemName { get { return ""; } }
         public LevelPermission MinRank;
         public List<LevelPermission> Allowed, Disallowed;
         
-        public ItemPerms(LevelPermission min) { MinRank = min; }
+        public ItemPerms(LevelPermission min) { Init(min, null, null); }
+        
+        public ItemPerms(LevelPermission min, List<LevelPermission> allowed,
+                         List<LevelPermission> disallowed) {
+            Init(min, allowed, disallowed);
+        }
         
         protected void Init(LevelPermission min, List<LevelPermission> allowed,
                             List<LevelPermission> disallowed) {
             MinRank = min; Allowed = allowed; Disallowed = disallowed;
         }
         
-        public void CopyPermissionsTo(ItemPerms dst) {
-            dst.MinRank    = MinRank;
-            dst.Allowed    = Allowed    == null ? null : new List<LevelPermission>(Allowed);
-            dst.Disallowed = Disallowed == null ? null : new List<LevelPermission>(Disallowed);
+        protected void CopyTo(ItemPerms perms) {
+            perms.MinRank    = MinRank;
+            perms.Allowed    = Allowed    == null ? null : new List<LevelPermission>(Allowed);
+            perms.Disallowed = Disallowed == null ? null : new List<LevelPermission>(Disallowed);
         }
         
         public bool UsableBy(LevelPermission perm) {
@@ -47,34 +51,11 @@ namespace MCGalaxy
                 && (Disallowed == null || !Disallowed.Contains(perm));
         }
         
-        public bool UsableBy(Player p) { return UsableBy(p.group.Permission); }
-        
-        
-        public void Allow(LevelPermission rank) {
-            if (Disallowed != null && Disallowed.Contains(rank)) {
-                Disallowed.Remove(rank);
-            } else if (Allowed == null || !Allowed.Contains(rank)) {
-                if (Allowed == null) Allowed = new List<LevelPermission>();
-                Allowed.Add(rank);
-            }
-        }
-        
-        public void Disallow(LevelPermission rank) {
-            if (Allowed != null && Allowed.Contains(rank)) {
-                Allowed.Remove(rank);
-            } else if (Disallowed == null || !Disallowed.Contains(rank)) {
-                if (Disallowed == null) Disallowed = new List<LevelPermission>();
-                Disallowed.Add(rank);
-            }
-        }
-        
-        
         public void Describe(StringBuilder builder) {
             builder.Append(Group.GetColoredName(MinRank) + "&S+");
             
             if (Allowed != null && Allowed.Count > 0) {
-                foreach (LevelPermission perm in Allowed) 
-                {
+                foreach (LevelPermission perm in Allowed) {
                     builder.Append(", " + Group.GetColoredName(perm));
                 }
                 builder.Append("&S");
@@ -82,8 +63,7 @@ namespace MCGalaxy
             
             if (Disallowed != null && Disallowed.Count > 0) {
                 builder.Append( " (except ");
-                foreach (LevelPermission perm in Disallowed) 
-                {
+                foreach (LevelPermission perm in Disallowed) {
                     builder.Append(Group.GetColoredName(perm) + ", ");
                 }
                 builder.Remove(builder.Length - 2, 2);
@@ -131,8 +111,7 @@ namespace MCGalaxy
             if (input == null || input.Length == 0) return null;
             
             List<LevelPermission> perms = new List<LevelPermission>();
-            foreach (string perm in input.SplitComma()) 
-            {
+            foreach (string perm in input.SplitComma()) {
                 perms.Add((LevelPermission)int.Parse(perm));
             }
             return perms;

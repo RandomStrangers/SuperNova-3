@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -20,29 +20,38 @@ using System.Collections.Generic;
 using System.IO;
 using BlockID = System.UInt16;
 
-namespace MCGalaxy.Blocks 
-{
+namespace MCGalaxy.Blocks {
+
     /// <summary> Represents which ranks are allowed (and which are disallowed) to use a block. </summary>
-    public sealed class BlockPerms : ItemPerms 
-    {
+    public sealed class BlockPerms : ItemPerms {
         public BlockID ID;
         public override string ItemName { get { return ID.ToString(); } }
         
-        static BlockPerms[] List = new BlockPerms[Block.SUPPORTED_COUNT];
-        
-        
-        public BlockPerms(BlockID id, LevelPermission min) : base(min) {
+        public BlockPerms(BlockID id, LevelPermission min, List<LevelPermission> allowed,
+                          List<LevelPermission> disallowed) : base(min, allowed, disallowed) {
             ID = id;
         }
         
         public BlockPerms Copy() {
-            BlockPerms copy = new BlockPerms(ID, 0);
-            CopyPermissionsTo(copy); return copy;
-        }        
-       
+            BlockPerms copy = new BlockPerms(ID, 0, null, null);
+            CopyTo(copy); return copy;
+        }
+        
+        public static BlockPerms[] List = new BlockPerms[Block.ExtendedCount];
 
         /// <summary> Find the permissions for the given block. </summary>
         public static BlockPerms Find(BlockID b) { return List[b]; }
+        
+        /// <summary> Sets the permissions for the given block. </summary>
+        public static void Set(BlockID b, LevelPermission min,
+                               List<LevelPermission> allowed, List<LevelPermission> disallowed) {
+            BlockPerms perms = List[b];
+            if (perms == null) {
+                List[b] = new BlockPerms(b, min, allowed, disallowed);
+            } else {
+                perms.Init(min, allowed, disallowed);
+            }
+        }
 
         
         public static void ResendAllBlockPermissions() {
@@ -76,28 +85,19 @@ namespace MCGalaxy.Blocks
                 }
             }
         }
-
-        
-        /// <summary> Applies new block permissions to server state. </summary>
-        public static void ApplyChanges() {
-            foreach (Group grp in Group.AllRanks) 
-            {
-                SetUsable(grp);
-            }
-        }
-        
-        public static void SetUsable(Group grp) {
-            foreach (BlockPerms perms in List) 
-            {
-                grp.Blocks[perms.ID] = perms.UsableBy(grp.Permission);
-            }
-        }
         
 
         /// <summary> Loads list of block permissions from disc. </summary>
         public static void Load() {
             lock (ioLock) LoadCore();
             ApplyChanges();
+        }
+        
+        /// <summary> Applies new block permissions to server state. </summary>
+        public static void ApplyChanges() {
+            foreach (Group grp in Group.GroupList) {
+                grp.SetUsableBlocks();
+            }
         }
 
         static void LoadCore() {
@@ -138,19 +138,8 @@ namespace MCGalaxy.Blocks
             }
         }
         
-        static void Set(BlockID b, LevelPermission min,
-                        List<LevelPermission> allowed, List<LevelPermission> disallowed) {
-            BlockPerms perms = List[b];
-            if (perms == null) {
-                perms   = new BlockPerms(b, min);
-                List[b] = perms;
-            }
-            perms.Init(min, allowed, disallowed);
-        }
-        
-        
         static void SetDefaultPerms() {
-            for (BlockID block = 0; block < Block.SUPPORTED_COUNT; block++) {
+            for (BlockID block = 0; block < Block.ExtendedCount; block++) {
                 BlockProps props = Block.Props[block];
                 LevelPermission min;
                 
