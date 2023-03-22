@@ -74,7 +74,6 @@ namespace MCGalaxy {
 
         /// <summary> Retrieves the data associated with the given name. </summary>
         /// <remarks> Returns null if there is no data associated. </remarks>
-        [Obsolete("Use Get() instead")]
         public string FindData(string name) {
             lock (locker) {
                 int idx = names.CaselessIndexOf(name);
@@ -85,20 +84,13 @@ namespace MCGalaxy {
                 return idx == -1 ? null : line.Substring(idx + 1);
             }
         }
+
         
-        /// <summary> Retrieves the data associated with the given name </summary>
-        /// <remarks> Returns "" if the data associated with the given name is missing </remarks>
-        /// <remarks> Returns null if the given name was not found at all </remarks>
-        public string Get(string name) {
-            lock (locker) {
-                int idx = names.CaselessIndexOf(name);
-                if (idx == -1) return null;
-                
-                string line = lines[idx];
-                idx = line.IndexOf(Separator);
-                return idx == -1 ? "" : line.Substring(idx + 1);
-            }
-        }
+        [Obsolete("Use Update instead")]
+        public void Add(string name, string data) { Update(name, data); }
+
+        [Obsolete("Use Update instead")]        
+        public void AddOrReplace(string name, string data) { Update(name, data); }
         
         
         public void Save() { Save(true); }

@@ -1,5 +1,5 @@
 /*
-    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCForge)
+    Copyright 2010 MCSharp team (Modified for use with MCZall/MCLawl/MCGalaxy)
     
     Dual-licensed under the Educational Community License, Version 2.0 and
     the GNU General Public License, Version 3 (the "Licenses"); you may
@@ -67,6 +67,9 @@ namespace MCGalaxy {
         }
         
 
+        [Obsolete("Use Add instead")]
+        public bool AddUnique(string name) { return Add(name); }
+        
         internal int IndexOf(string name) {
             lock (locker) return names.CaselessIndexOf(name);
         }
@@ -95,8 +98,9 @@ namespace MCGalaxy {
                 p.Message("There are no {0}.", group);
             } else {
                 p.Message("{0}:", group.Capitalize());
-                Paginator.Output(p, list, (name) => p.FormatNick(name),
-                                 listCmd, "players", modifier);
+                MultiPageOutput.Output(p, list,
+                                       (name) => p.FormatNick(name),
+                                       listCmd, "players", modifier, false);
             }
         }
         
@@ -108,8 +112,8 @@ namespace MCGalaxy {
                 p.Message("There are no {0}.", group);
             } else {
                 p.Message("{0}:", group.Capitalize());
-                Paginator.Output(p, list, (name) => name,
-                                 listCmd, "players", modifier);
+                MultiPageOutput.Output(p, list, (name) => name,
+                                       listCmd, "players", modifier, false);
             }
         }
         
